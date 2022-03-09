@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rcs
+spec:
+  replicas: 2
+  serviceName: rcs
+  selector:
+    matchLabels:
+      app: rcs
+  template:
+    metadata:
+      labels:
+        app: rcs
+    spec:
+      containers:
+      - image:  rcs
+        name: rcs
+        command: ['bash', '-c', "export OPENICF_OPTS=-Dconnectorserver.connectorServerName=$HOSTNAME && /opt/openicf/bin/docker-entrypoint.sh"]
+        resources:
+          requests:
+            memory: "500Mi"
