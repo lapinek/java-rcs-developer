@@ -40,6 +40,8 @@ def objectClass = objectClass as ObjectClass
 def options = options as OperationOptions
 def EMPTY = new ObjectClass("__EMPTY__")
 
+log.info("This is SEARCH SCRIPT")
+
 switch (objectClass) {
     case ObjectClass.ACCOUNT:
 

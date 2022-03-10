@@ -34,29 +34,30 @@
         "SCHEMA": -1
     },
     "configurationProperties": {
-        "schemaScriptFileName": "SchemaScript.groovy",
-        "searchScriptFileName": "SearchScript.groovy",
-        "testScriptFileName": "TestScript.groovy",
-        "customSensitiveConfiguration": null,
-        "createScriptFileName": null,
-        "targetDirectory": null,
-        "customizerScriptFileName": null,
-        "warningLevel": 1,
-        "authenticateScriptFileName": null,
-        "scriptExtensions": [
-            "groovy"
-        ],
-        "scriptOnResourceScriptFileName": null,
-        "minimumRecompilationInterval": 100,
-        "deleteScriptFileName": null,
-        "scriptBaseClass": null,
         "scriptRoots": [
             "/opt/openicf/scripts/pseudo"
         ],
+        "authenticateScriptFileName": "AuthenticateScript.groovy",
+        "createScriptFileName": "CreateScript.groovy",
+        "customizerScriptFileName": null,
+        "deleteScriptFileName": "DeleteScript.groovy",
+        "resolveUsernameScriptFileName": "ResolveUsernameScript.groovy",
+        "schemaScriptFileName": "SchemaScript.groovy",
+        "scriptOnResourceScriptFileName": "ScriptOnResourceScript.groovy",
+        "searchScriptFileName": "SearchScript.groovy",
+        "syncScriptFileName": "SyncScript.groovy",
+        "testScriptFileName": "TestScript.groovy",
+        "updateScriptFileName": "UpdateScript.groovy",
+        "customSensitiveConfiguration": null,
+        "targetDirectory": null,
+        "warningLevel": 1,
+        "scriptExtensions": [
+            "groovy"
+        ],
+        "minimumRecompilationInterval": 100,
+        "scriptBaseClass": null,
         "customConfiguration": null,
-        "resolveUsernameScriptFileName": null,
         "tolerance": 10,
-        "updateScriptFileName": null,
         "debug": false,
         "classpath": [],
         "disabledGlobalASTTransformations": [
@@ -64,8 +65,7 @@
         ],
         "verbose": false,
         "sourceEncoding": "UTF-8",
-        "syncScriptFileName": null,
-        "recompileGroovySource": false
+        "recompileGroovySource": true
     },
     "objectTypes": {
         "__GROUP__": {

@@ -10,7 +10,7 @@ build:
     docker:
       dockerfile: Dockerfile
 deploy:
-  statusCheckDeadlineSeconds: 20
+  statusCheckDeadlineSeconds: 30
   kubectl:
     manifests:
     - rcs.yaml
