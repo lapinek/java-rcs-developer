@@ -2,7 +2,7 @@
     "connectorRef": {
         "connectorHostRef": "rcs",
         "displayName": "Scripted Groovy Connector",
-        "bundleVersion": "1.5.20.5",
+        "bundleVersion": "1.5.20.5-SNAPSHOT",
         "systemType": "provisioner.openicf",
         "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
         "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
