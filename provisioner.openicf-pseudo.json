@@ -1,9 +1,7 @@
 {
     "connectorRef": {
         "connectorHostRef": "rcs",
-        "displayName": "Scripted Groovy Connector",
         "bundleVersion": "1.5.20.5-SNAPSHOT",
-        "systemType": "provisioner.openicf",
         "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
         "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
     },
@@ -36,6 +34,9 @@
         "SCHEMA": -1
     },
     "configurationProperties": {
+        "schemaScriptFileName": "SchemaScript.groovy",
+        "searchScriptFileName": "SearchScript.groovy",
+        "testScriptFileName": "TestScript.groovy",
         "customSensitiveConfiguration": null,
         "createScriptFileName": null,
         "targetDirectory": null,
@@ -49,22 +50,1149 @@
         "minimumRecompilationInterval": 100,
         "deleteScriptFileName": null,
         "scriptBaseClass": null,
-        "scriptRoots" : [
+        "scriptRoots": [
             "/opt/openicf/scripts/pseudo"
         ],
         "customConfiguration": null,
         "resolveUsernameScriptFileName": null,
-        "searchScriptFileName": "SearchScript.groovy",
         "tolerance": 10,
         "updateScriptFileName": null,
         "debug": false,
         "classpath": [],
-        "disabledGlobalASTTransformations": null,
-        "schemaScriptFileName": null,
+        "disabledGlobalASTTransformations": [
+            null
+        ],
         "verbose": false,
-        "testScriptFileName": null,
         "sourceEncoding": "UTF-8",
         "syncScriptFileName": null,
         "recompileGroovySource": false
+    },
+    "objectTypes": {
+        "__GROUP__": {
+            "$schema": "http://json-schema.org/draft-03/schema",
+            "id": "__GROUP__",
+            "type": "object",
+            "nativeType": "__GROUP__",
+            "properties": {
+                "__DESCRIPTION__": {
+                    "type": "string",
+                    "nativeName": "__DESCRIPTION__",
+                    "nativeType": "string"
+                },
+                "__NAME__": {
+                    "type": "string",
+                    "nativeName": "__NAME__",
+                    "nativeType": "string"
+                },
+                "cn": {
+                    "type": "string",
+                    "required": true,
+                    "nativeName": "cn",
+                    "nativeType": "string"
+                },
+                "member": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "string"
+                    },
+                    "required": true,
+                    "nativeName": "member",
+                    "nativeType": "string"
+                }
+            }
+        },
+        "__TEST__": {
+            "$schema": "http://json-schema.org/draft-03/schema",
+            "id": "__TEST__",
+            "type": "object",
+            "nativeType": "__TEST__",
+            "properties": {
+                "attributeByteMultivalued": {
+                    "type": "array",
+                    "items": {
+                        "type": "number",
+                        "nativeType": "JAVA_TYPE_BYTE"
+                    },
+                    "nativeName": "attributeByteMultivalued",
+                    "nativeType": "JAVA_TYPE_BYTE"
+                },
+                "attributeByteArray": {
+                    "type": "string",
+                    "nativeName": "attributeByteArray",
+                    "nativeType": "JAVA_TYPE_BYTE_ARRAY"
+                },
+                "attributeByteArrayMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "JAVA_TYPE_BYTE_ARRAY"
+                    },
+                    "nativeName": "attributeByteArrayMultivalue",
+                    "nativeType": "JAVA_TYPE_BYTE_ARRAY"
+                },
+                "attributebytep": {
+                    "type": "string",
+                    "nativeName": "attributebytep",
+                    "nativeType": "JAVA_TYPE_PRIMITIVE_BYTE"
+                },
+                "attributeCharacterMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "JAVA_TYPE_CHARACTER"
+                    },
+                    "nativeName": "attributeCharacterMultivalue",
+                    "nativeType": "JAVA_TYPE_CHARACTER"
+                },
+                "attributeMap": {
+                    "type": "object",
+                    "nativeName": "attributeMap",
+                    "nativeType": "object"
+                },
+                "attributelongp": {
+                    "type": "number",
+                    "nativeName": "attributelongp",
+                    "nativeType": "JAVA_TYPE_PRIMITIVE_LONG"
+                },
+                "attributelongpMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "number",
+                        "nativeType": "JAVA_TYPE_PRIMITIVE_LONG"
+                    },
+                    "nativeName": "attributelongpMultivalue",
+                    "nativeType": "JAVA_TYPE_PRIMITIVE_LONG"
+                },
+                "attributeIntegerMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "nativeType": "integer"
+                    },
+                    "nativeName": "attributeIntegerMultivalue",
+                    "nativeType": "integer"
+                },
+                "attributeInteger": {
+                    "type": "integer",
+                    "nativeName": "attributeInteger",
+                    "nativeType": "integer"
+                },
+                "attributeBigIntegerMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "number",
+                        "nativeType": "JAVA_TYPE_BIGINTEGER"
+                    },
+                    "nativeName": "attributeBigIntegerMultivalue",
+                    "nativeType": "JAVA_TYPE_BIGINTEGER"
+                },
+                "attributeLong": {
+                    "type": "number",
+                    "nativeName": "attributeLong",
+                    "nativeType": "JAVA_TYPE_LONG"
+                },
+                "attributeMapMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "nativeType": "object"
+                    },
+                    "nativeName": "attributeMapMultivalue",
+                    "nativeType": "object"
+                },
+                "attributedoublep": {
+                    "type": "number",
+                    "nativeName": "attributedoublep",
+                    "nativeType": "JAVA_TYPE_PRIMITIVE_DOUBLE"
+                },
+                "attributeString": {
+                    "type": "string",
+                    "nativeName": "attributeString",
+                    "nativeType": "string"
+                },
+                "attributeint": {
+                    "type": "integer",
+                    "nativeName": "attributeint",
+                    "nativeType": "JAVA_TYPE_INT"
+                },
+                "attributeCharacter": {
+                    "type": "string",
+                    "nativeName": "attributeCharacter",
+                    "nativeType": "JAVA_TYPE_CHARACTER"
+                },
+                "attributecharMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "JAVA_TYPE_CHAR"
+                    },
+                    "nativeName": "attributecharMultivalue",
+                    "nativeType": "JAVA_TYPE_CHAR"
+                },
+                "attributeBigInteger": {
+                    "type": "number",
+                    "nativeName": "attributeBigInteger",
+                    "nativeType": "JAVA_TYPE_BIGINTEGER"
+                },
+                "attributeBigDecimalMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "number",
+                        "nativeType": "JAVA_TYPE_BIGDECIMAL"
+                    },
+                    "nativeName": "attributeBigDecimalMultivalue",
+                    "nativeType": "JAVA_TYPE_BIGDECIMAL"
+                },
+                "__NAME__": {
+                    "type": "string",
+                    "nativeName": "__NAME__",
+                    "nativeType": "string"
+                },
+                "attributeGuardedByteArray": {
+                    "type": "string",
+                    "nativeName": "attributeGuardedByteArray",
+                    "nativeType": "JAVA_TYPE_GUARDEDBYTEARRAY"
+                },
+                "attributeBoolean": {
+                    "type": "boolean",
+                    "nativeName": "attributeBoolean",
+                    "nativeType": "boolean"
+                },
+                "attributeLongMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "number",
+                        "nativeType": "JAVA_TYPE_LONG"
+                    },
+                    "nativeName": "attributeLongMultivalue",
+                    "nativeType": "JAVA_TYPE_LONG"
+                },
+                "attributeByte": {
+                    "type": "number",
+                    "nativeName": "attributeByte",
+                    "nativeType": "JAVA_TYPE_BYTE"
+                },
+                "attributebytepMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "JAVA_TYPE_PRIMITIVE_BYTE"
+                    },
+                    "nativeName": "attributebytepMultivalue",
+                    "nativeType": "JAVA_TYPE_PRIMITIVE_BYTE"
+                },
+                "attributebooleanp": {
+                    "type": "boolean",
+                    "nativeName": "attributebooleanp",
+                    "nativeType": "JAVA_TYPE_PRIMITIVE_BOOLEAN"
+                },
+                "attributefloatp": {
+                    "type": "number",
+                    "nativeName": "attributefloatp",
+                    "nativeType": "JAVA_TYPE_PRIMITIVE_FLOAT"
+                },
+                "attributeBooleanMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "boolean",
+                        "nativeType": "boolean"
+                    },
+                    "nativeName": "attributeBooleanMultivalue",
+                    "nativeType": "boolean"
+                },
+                "attributeGuardedStringMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                    },
+                    "nativeName": "attributeGuardedStringMultivalue",
+                    "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                },
+                "attributeBigDecimal": {
+                    "type": "number",
+                    "nativeName": "attributeBigDecimal",
+                    "nativeType": "JAVA_TYPE_BIGDECIMAL"
+                },
+                "attributeGuardedByteArrayMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "JAVA_TYPE_GUARDEDBYTEARRAY"
+                    },
+                    "nativeName": "attributeGuardedByteArrayMultivalue",
+                    "nativeType": "JAVA_TYPE_GUARDEDBYTEARRAY"
+                },
+                "attributeDoubleMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "number",
+                        "nativeType": "JAVA_TYPE_DOUBLE"
+                    },
+                    "nativeName": "attributeDoubleMultivalue",
+                    "nativeType": "JAVA_TYPE_DOUBLE"
+                },
+                "attributeFloatMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "number",
+                        "nativeType": "JAVA_TYPE_FLOAT"
+                    },
+                    "nativeName": "attributeFloatMultivalue",
+                    "nativeType": "JAVA_TYPE_FLOAT"
+                },
+                "attributeDouble": {
+                    "type": "number",
+                    "nativeName": "attributeDouble",
+                    "nativeType": "JAVA_TYPE_DOUBLE"
+                },
+                "attributeStringMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "string"
+                    },
+                    "nativeName": "attributeStringMultivalue",
+                    "nativeType": "string"
+                },
+                "attributechar": {
+                    "type": "string",
+                    "nativeName": "attributechar",
+                    "nativeType": "JAVA_TYPE_CHAR"
+                },
+                "attributefloatpMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "number",
+                        "nativeType": "JAVA_TYPE_PRIMITIVE_FLOAT"
+                    },
+                    "nativeName": "attributefloatpMultivalue",
+                    "nativeType": "JAVA_TYPE_PRIMITIVE_FLOAT"
+                },
+                "attributeFloat": {
+                    "type": "number",
+                    "nativeName": "attributeFloat",
+                    "nativeType": "JAVA_TYPE_FLOAT"
+                },
+                "attributedoublepMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "number",
+                        "nativeType": "JAVA_TYPE_PRIMITIVE_DOUBLE"
+                    },
+                    "nativeName": "attributedoublepMultivalue",
+                    "nativeType": "JAVA_TYPE_PRIMITIVE_DOUBLE"
+                },
+                "attributebooleanpMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "boolean",
+                        "nativeType": "JAVA_TYPE_PRIMITIVE_BOOLEAN"
+                    },
+                    "nativeName": "attributebooleanpMultivalue",
+                    "nativeType": "JAVA_TYPE_PRIMITIVE_BOOLEAN"
+                },
+                "attributeGuardedString": {
+                    "type": "string",
+                    "nativeName": "attributeGuardedString",
+                    "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                },
+                "attributeintMultivalue": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "nativeType": "JAVA_TYPE_INT"
+                    },
+                    "nativeName": "attributeintMultivalue",
+                    "nativeType": "JAVA_TYPE_INT"
+                }
+            }
+        },
+        "__ACCOUNT__": {
+            "$schema": "http://json-schema.org/draft-03/schema",
+            "id": "__ACCOUNT__",
+            "type": "object",
+            "nativeType": "__ACCOUNT__",
+            "properties": {
+                "__DESCRIPTION__": {
+                    "type": "string",
+                    "nativeName": "__DESCRIPTION__",
+                    "nativeType": "string"
+                },
+                "__PASSWORD__": {
+                    "type": "string",
+                    "nativeName": "__PASSWORD__",
+                    "nativeType": "JAVA_TYPE_GUARDEDSTRING",
+                    "flags": [
+                        "NOT_READABLE",
+                        "NOT_RETURNED_BY_DEFAULT"
+                    ]
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "string"
+                    },
+                    "nativeName": "groups",
+                    "nativeType": "string"
+                },
+                "passwordHistory": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "string"
+                    },
+                    "nativeName": "passwordHistory",
+                    "nativeType": "string",
+                    "flags": [
+                        "NOT_UPDATEABLE",
+                        "NOT_READABLE",
+                        "NOT_RETURNED_BY_DEFAULT"
+                    ]
+                },
+                "createDate": {
+                    "type": "string",
+                    "nativeName": "createDate",
+                    "nativeType": "string",
+                    "flags": [
+                        "NOT_CREATABLE",
+                        "NOT_UPDATEABLE"
+                    ]
+                },
+                "firstName": {
+                    "type": "string",
+                    "nativeName": "firstName",
+                    "nativeType": "string"
+                },
+                "email": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "string"
+                    },
+                    "required": true,
+                    "nativeName": "email",
+                    "nativeType": "string"
+                },
+                "__ENABLE__": {
+                    "type": "boolean",
+                    "nativeName": "__ENABLE__",
+                    "nativeType": "boolean"
+                },
+                "lastModified": {
+                    "type": "number",
+                    "nativeName": "lastModified",
+                    "nativeType": "JAVA_TYPE_LONG",
+                    "flags": [
+                        "NOT_CREATABLE",
+                        "NOT_UPDATEABLE",
+                        "NOT_RETURNED_BY_DEFAULT"
+                    ]
+                },
+                "userName": {
+                    "type": "string",
+                    "required": true,
+                    "nativeName": "userName",
+                    "nativeType": "string"
+                },
+                "__NAME__": {
+                    "type": "string",
+                    "nativeName": "__NAME__",
+                    "nativeType": "string"
+                },
+                "sn": {
+                    "type": "string",
+                    "nativeName": "sn",
+                    "nativeType": "string"
+                }
+            }
+        }
+    },
+    "operationOptions": {
+        "CREATE": {
+            "objectFeatures": {
+                "__GROUP__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                },
+                "__TEST__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                },
+                "__ACCOUNT__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "UPDATE": {
+            "objectFeatures": {
+                "__GROUP__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                },
+                "__TEST__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                },
+                "__ACCOUNT__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "DELETE": {
+            "objectFeatures": {
+                "__GROUP__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                },
+                "__TEST__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                },
+                "__ACCOUNT__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "TEST": {
+            "objectFeatures": {}
+        },
+        "SCRIPT_ON_CONNECTOR": {
+            "objectFeatures": {}
+        },
+        "SCRIPT_ON_RESOURCE": {
+            "objectFeatures": {}
+        },
+        "GET": {
+            "objectFeatures": {
+                "__GROUP__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "SORT_KEYS": {
+                                "type": "string",
+                                "nativeType": null
+                            },
+                            "PAGED_RESULTS_OFFSET": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "PAGE_SIZE": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "PAGED_RESULTS_COOKIE": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                },
+                "__TEST__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "SORT_KEYS": {
+                                "type": "string",
+                                "nativeType": null
+                            },
+                            "PAGED_RESULTS_OFFSET": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "PAGE_SIZE": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "PAGED_RESULTS_COOKIE": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                },
+                "__ACCOUNT__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "SORT_KEYS": {
+                                "type": "string",
+                                "nativeType": null
+                            },
+                            "PAGED_RESULTS_OFFSET": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "PAGE_SIZE": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "PAGED_RESULTS_COOKIE": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "RESOLVEUSERNAME": {
+            "objectFeatures": {
+                "__GROUP__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            }
+                        }
+                    }
+                },
+                "__TEST__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            }
+                        }
+                    }
+                },
+                "__ACCOUNT__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "AUTHENTICATE": {
+            "objectFeatures": {
+                "__GROUP__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            }
+                        }
+                    }
+                },
+                "__TEST__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            }
+                        }
+                    }
+                },
+                "__ACCOUNT__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "SEARCH": {
+            "objectFeatures": {
+                "__GROUP__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "SORT_KEYS": {
+                                "type": "string",
+                                "nativeType": null
+                            },
+                            "PAGED_RESULTS_OFFSET": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "PAGE_SIZE": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "PAGED_RESULTS_COOKIE": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                },
+                "__TEST__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "SORT_KEYS": {
+                                "type": "string",
+                                "nativeType": null
+                            },
+                            "PAGED_RESULTS_OFFSET": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "PAGE_SIZE": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "PAGED_RESULTS_COOKIE": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                },
+                "__ACCOUNT__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "SORT_KEYS": {
+                                "type": "string",
+                                "nativeType": null
+                            },
+                            "PAGED_RESULTS_OFFSET": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "PAGE_SIZE": {
+                                "type": "integer",
+                                "nativeType": "integer"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            },
+                            "notify": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "PAGED_RESULTS_COOKIE": {
+                                "type": "string",
+                                "nativeType": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "VALIDATE": {
+            "objectFeatures": {}
+        },
+        "SYNC": {
+            "objectFeatures": {
+                "__GROUP__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            }
+                        }
+                    }
+                },
+                "__TEST__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            }
+                        }
+                    }
+                },
+                "__ACCOUNT__": {
+                    "operationOptionInfo": {
+                        "$schema": "http://json-schema.org/draft-03/schema",
+                        "type": "object",
+                        "properties": {
+                            "RUN_AS_USER": {
+                                "type": "string",
+                                "nativeType": "string"
+                            },
+                            "RUN_WITH_PASSWORD": {
+                                "type": "string",
+                                "nativeType": "JAVA_TYPE_GUARDEDSTRING"
+                            },
+                            "force": {
+                                "type": "boolean",
+                                "nativeType": "boolean"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "SCHEMA": {
+            "objectFeatures": {}
+        }
     }
 }

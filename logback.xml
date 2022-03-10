@@ -52,10 +52,12 @@
     </appender>
 
     <!-- additivity=false ensures connectors data only goes to the connector log -->
-    <logger name="org.forgerock.openicf.misc" level="INFO" additivity="false">
+    <logger name="org.forgerock.openicf.misc" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT"/>
         <appender-ref ref="CONNECTOR-FILE"/>
     </logger>
-    <logger name="org.forgerock.openicf.connectors" level="INFO" additivity="false">
+    <logger name="org.forgerock.openicf.connectors" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT"/>
         <appender-ref ref="CONNECTOR-FILE"/>
     </logger>
     <!-- Legacy connectors -->
