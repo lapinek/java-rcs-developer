@@ -74,7 +74,7 @@
     <logger name="org.identityconnectors.framework.api.operations" level="DEBUG" additivity="false">
         <appender-ref ref="TRACE-FILE"/>
     </logger-->
-    <logger name="org.forgerock.openicf.common" level="INFO" additivity="false">
+    <logger name="org.forgerock.openicf.common" level="DEBUG" additivity="false">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="SERVER-FILE"/>
     </logger>

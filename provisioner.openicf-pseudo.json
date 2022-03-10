@@ -1,0 +1,70 @@
+{
+    "connectorRef": {
+        "connectorHostRef": "rcs",
+        "displayName": "Scripted Groovy Connector",
+        "bundleVersion": "1.5.20.5",
+        "systemType": "provisioner.openicf",
+        "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
+        "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
+    },
+    "poolConfigOption": {
+        "maxObjects": 10,
+        "maxIdle": 10,
+        "maxWait": 150000,
+        "minEvictableIdleTimeMillis": 120000,
+        "minIdle": 1
+    },
+    "resultsHandlerConfig": {
+        "enableNormalizingResultsHandler": false,
+        "enableFilteredResultsHandler": false,
+        "enableCaseInsensitiveFilter": false,
+        "enableAttributesToGetSearchResultsHandler": true
+    },
+    "operationTimeout": {
+        "CREATE": -1,
+        "UPDATE": -1,
+        "DELETE": -1,
+        "TEST": -1,
+        "SCRIPT_ON_CONNECTOR": -1,
+        "SCRIPT_ON_RESOURCE": -1,
+        "GET": -1,
+        "RESOLVEUSERNAME": -1,
+        "AUTHENTICATE": -1,
+        "SEARCH": -1,
+        "VALIDATE": -1,
+        "SYNC": -1,
+        "SCHEMA": -1
+    },
+    "configurationProperties": {
+        "customSensitiveConfiguration": null,
+        "createScriptFileName": null,
+        "targetDirectory": null,
+        "customizerScriptFileName": null,
+        "warningLevel": 1,
+        "authenticateScriptFileName": null,
+        "scriptExtensions": [
+            "groovy"
+        ],
+        "scriptOnResourceScriptFileName": null,
+        "minimumRecompilationInterval": 100,
+        "deleteScriptFileName": null,
+        "scriptBaseClass": null,
+        "scriptRoots" : [
+            "/opt/openicf/scripts/pseudo"
+        ],
+        "customConfiguration": null,
+        "resolveUsernameScriptFileName": null,
+        "searchScriptFileName": "SearchScript.groovy",
+        "tolerance": 10,
+        "updateScriptFileName": null,
+        "debug": false,
+        "classpath": [],
+        "disabledGlobalASTTransformations": null,
+        "schemaScriptFileName": null,
+        "verbose": false,
+        "testScriptFileName": null,
+        "sourceEncoding": "UTF-8",
+        "syncScriptFileName": null,
+        "recompileGroovySource": false
+    }
+}
