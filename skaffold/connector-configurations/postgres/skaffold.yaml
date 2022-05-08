@@ -1,9 +1,0 @@
-apiVersion: skaffold/v2beta26
-kind: Config
-metadata:
-  name: rcs
-deploy:
-  statusCheckDeadlineSeconds: 60
-  kubectl:
-    manifests:
-    - postgres.yaml

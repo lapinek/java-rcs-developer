@@ -33,6 +33,9 @@ import org.identityconnectors.framework.common.objects.filter.Filter
 import org.identityconnectors.framework.common.exceptions.ConnectorException
 import java.util.LinkedHashMap
 
+import org.identityconnectors.common.security.SecurityUtil
+import org.identityconnectors.common.Base64
+
 //class Globals {
 //
 //    static String ouch = "I'm global.."
@@ -52,7 +55,14 @@ def empty = new ObjectClass('__EMPTY__')
 // handler: org.forgerock.openicf.connectors.groovy.ScriptedConnectorBase$_executeQuery_closure2@1d88f253
 
 try {
-    log.info('THIS IS ' + operation + ' SCRIPT')
+    log.info('THIS IS ' + operation + ' SCRIPT IN TRY')
+
+    println('BASIC TEST')
+
+    def s = (new java.lang.String("idm-provisioning")) + ":" + (new java.lang.String("vA9kLXhlDXenSYXuOCcB2834"))
+    println('Basic ' + Base64.encode(s.getBytes('ISO-8859-1')))
+
+
     // log.info('Ouch: ' + Globals.ouch)
     // java.util.LinkedHashMap
     this.binding.variables.each {
@@ -221,7 +231,13 @@ try {
             throw new UnsupportedOperationException(operation.name() + ' operation of type:' +
                     objectClass.objectClassValue + ' is not supported.')
     }
+
+    // aWRtLXByb3Zpc2lvbmluZzp2QTlrTFhobERYZW5TWVh1T0NjQjI4MzQ= (Postman)
+    // aWRtLXByb3Zpc2lvbmluZzp2QTlrTFhobERYZW5TWVh1T0NjQjI4MzQ= (this)
+
 } catch (Exception e) {
+    println('BASIC TEST FAILURE')
+
     def message = 'Exception: ' + e.getMessage()
     log.error(message)
     UnsupportedOperationException(message)

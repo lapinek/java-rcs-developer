@@ -1,3 +1,4 @@
+# FROM gcr.io/forgerock-io/icf/docker-build:1.5.20.6-7142ac92701e779b75703a101820fc0f4abb0519
 FROM gcr.io/forgerock-io/icf/docker-build:1.5.20.5
 
 COPY logback.xml /opt/openicf/lib/framework
