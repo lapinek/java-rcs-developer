@@ -16,7 +16,14 @@ spec:
       containers:
       - image:  rcs
         name: rcs
-        command: ['bash', '-c', "export OPENICF_OPTS=-Dconnectorserver.connectorServerName=$HOSTNAME && /opt/openicf/bin/docker-entrypoint.sh"]
+        command: ["bash", "-c"]
+        args:
+        - export OPENICF_OPTS=-"Dconnectorserver.connectorServerName=$HOSTNAME
+          -Dconnectorserver.url=wss://$TENANT_HOSTNAME/openicf/0
+          -Dconnectorserver.tokenEndpoint=$ACCESS_TOKEN_URL
+          -Dconnectorserver.clientId=$CLIENT_ID
+          -Dconnectorserver.clientSecret=$CLIENT_SECRET"
+          && /opt/openicf/bin/docker-entrypoint.sh;
         resources:
           requests:
             memory: "500Mi"
