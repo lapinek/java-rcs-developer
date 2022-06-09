@@ -38,50 +38,51 @@ def filter = filter as Filter
 def log = log as Log
 def objectClass = objectClass as ObjectClass
 def options = options as OperationOptions
-def ORG = new ObjectClass("organization")
+def ORG = new ObjectClass('organization')
 
-println('VERSION: ' + GroovySystem.version)
-log.info("Entering " + operation + " Script")
+log.info('THIS IS ' + operation.toString().toUpperCase()  + ' SCRIPT')
+
+// println('VERSION: ' + GroovySystem.version)
 
 def sql = new Sql(connection)
 
-//Need to handle the __UID__ and __NAME__ in queries - this map has entries for each objectType,
-//and is used to translate fields that might exist in the query object from the ICF identifier
-//back to the real property name.
+// Need to handle the __UID__ and __NAME__ in queries - this map has entries for each objectType,
+// and is used to translate fields that might exist in the query object from the ICF identifier
+// back to the real property name.
 def fieldMap = [
-        "organization": [
-                "__UID__"    : "id",
-                "__NAME__"   : "name",
-                "description": "description",
-                "timestamp"  : "timestamp",
-                "tableName"  : "organizations"
+        'organization': [
+                '__UID__'    : 'id',
+                '__NAME__'   : 'name',
+                'description': 'description',
+                'timestamp'  : 'timestamp',
+                'tableName'  : 'organizations'
         ],
-        "__ACCOUNT__" : [
-                "__UID__"     : "id",
-                "__NAME__"    : "uid",
-                "password"    : "password",
-                "firstname"   : "firstname",
-                "lastname"    : "lastname",
-                "fullname"    : "fullname",
-                "email"       : "email",
-                "organization": "organization",
-                "timestamp"   : "timestamp",
-                "tableName"   : "users"
+        '__ACCOUNT__' : [
+                '__UID__'     : 'id',
+                '__NAME__'    : 'uid',
+                'password'    : 'password',
+                'firstname'   : 'firstname',
+                'lastname'    : 'lastname',
+                'fullname'    : 'fullname',
+                'email'       : 'email',
+                'organization': 'organization',
+                'timestamp'   : 'timestamp',
+                'tableName'   : 'users'
 
         ],
-        "__GROUP__"   : [
-                "__UID__"    : "id",
-                "__NAME__"   : "name",
-                "gid"        : "gid",
-                "description": "description",
-                "timestamp"  : "timestamp",
-                "tableName": "account_groups"
+        '__GROUP__'   : [
+                '__UID__'    : 'id',
+                '__NAME__'   : 'name',
+                'gid'        : 'gid',
+                'description': 'description',
+                'timestamp'  : 'timestamp',
+                'tableName': 'account_groups'
         ]
 ]
 
 def query = "SELECT * FROM ${fieldMap[objectClass.objectClassValue].tableName}"
 def whereParams = fieldMap[objectClass.objectClassValue]
-def where = ""
+def where = ''
 
 
 if (filter instanceof EqualsFilter && ((EqualsFilter) filter).getAttribute().is(Uid.NAME)) {
@@ -89,14 +90,14 @@ if (filter instanceof EqualsFilter && ((EqualsFilter) filter).getAttribute().is(
 
     def id = AttributeUtil.getStringValue(((EqualsFilter) filter).getAttribute());
     where = " WHERE ${fieldMap[objectClass.objectClassValue].__UID__} = :UID"
-    whereParams["UID"] = id
+    whereParams['UID'] = id
 } else if (filter != null) {
     //This is a Search
 
     def queryTemplate = filter.accept(new SQLFilterVisitor(), whereParams)
-    where = " WHERE " + queryTemplate
+    where = ' WHERE ' + queryTemplate
 
-    log.ok("Search WHERE clause is: {0}", where)
+    log.ok('Search WHERE clause is: {0}', where)
 }
 
 def pagedResultsCookie = null
@@ -113,21 +114,21 @@ if (null != options.getPageSize() && options.getPageSize() > 0) {
     if (StringUtil.isBlank(options.getPagedResultsCookie())) {
         //First Page
         query = query
-        //return new SearchResult("NEXT");
+    // return new SearchResult("NEXT");
     } else {
         //Next Page
-        where = "(" + where + ") AND ${__UID__} > :pagedResultsCookie "
+        where = '(' + where + ") AND ${__UID__} > :pagedResultsCookie "
         whereParams[pagedResultsCookie] = options.getPagedResultsCookie()
     }
-    where = where + " ORDER BY id ASC LIMIT " + options.getPageSize()
+    where = where + ' ORDER BY id ASC LIMIT ' + options.getPageSize()
 } else {
     //If paged search requested ignore the sorting
     options?.sortKeys?.each {
         if (!AttributeUtil.namesEqual(it.field, Uid.NAME)) {
             if (it.isAscendingOrder()) {
-                where = where + " ORDER BY ${it.field} ASC LIMIT " + options.getPageSize() + ","
+                where = where + " ORDER BY ${it.field} ASC LIMIT " + options.getPageSize() + ','
             } else {
-                where = where + " ORDER BY ${it.field} DESC LIMIT " + options.getPageSize() + ","
+                where = where + " ORDER BY ${it.field} DESC LIMIT " + options.getPageSize() + ','
             }
         }
     }
@@ -135,9 +136,9 @@ if (null != options.getPageSize() && options.getPageSize() > 0) {
 
 query = new CachingSimpleTemplateEngine().createTemplate(query + where).make(whereParams)
 
-println ('where: ' + where)
-println ('whereParams: ' + whereParams)
-println ('query: ' + query)
+println('where: ' + where)
+println('whereParams: ' + whereParams)
+println('query: ' + query)
 
 try {
     sql.eachRow((String) query, { row ->
@@ -154,7 +155,7 @@ try {
                     attribute 'email', row.email
                     attribute 'organization', row.organization
 
-                    break;
+                    break
                 case ObjectClass.GROUP:
                     uid row.id as String
                     id row.name
@@ -162,17 +163,17 @@ try {
                     attribute 'gid', row.gid
                     attribute 'description', row.description
 
-                    break;
+                    break
                 case ORG:
                     uid row.id as String
                     id row.name
                     setObjectClass objectClass
                     attribute 'description', row.description
 
-                    break;
+                    break
                 default:
-                    throw new UnsupportedOperationException(operation.name() + " operation of type:" +
-                            objectClass.objectClassValue + " is not supported.")
+                    throw new UnsupportedOperationException(operation.name() + ' operation of type:' +
+                            objectClass.objectClassValue + ' is not supported.')
             }
         }
 
@@ -188,9 +189,10 @@ try {
     println('EXCEPTION: ' + e.getMessage())
     println('EXCEPTION: ' + e)
 }
+
 if (pageSize <= 0) {
     // There are no more page left
     pagedResultsCookie = null
 }
 
-return new SearchResult(pagedResultsCookie, -1);
+return new SearchResult(pagedResultsCookie, -1)

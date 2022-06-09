@@ -38,4 +38,18 @@ this.binding.variables.each {
 def connectionExecute = connection.execute('SELECT 1;')
 println('connectionExecute: ' + connectionExecute)
 
+try {
+    println 'PROPERTY BAG'
+
+    log.info configuration.propertyBag.key1
+    log.info configuration.propertyBag.key2
+    log.info configuration.propertyBag.map1.key1
+    log.info configuration.propertyBag.map1.key2
+    log.info configuration.propertyBag.map2.key1
+    log.info configuration.propertyBag.map2.key2
+} catch (e) {
+    println('EXCEPTION: ' + e.getMessage())
+    println('EXCEPTION: ' + e)
+}
+
 //throw new MissingResourceException("Test Failed", operation.name(), "")

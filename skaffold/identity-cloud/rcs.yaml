@@ -16,7 +16,7 @@ spec:
       containers:
       - image:  rcs
         name: rcs
-        command: ["bash", "-c"]
+        command: ['bash', '-c']
         args:
         - export OPENICF_OPTS=-"Dconnectorserver.connectorServerName=$HOSTNAME
           -Dconnectorserver.url=wss://$TENANT_HOSTNAME/openicf/0
