@@ -237,7 +237,7 @@ The following covers some _additional_ details for using the [RCS Skaffold Examp
     Example `Dockerfile`:
 
     ```docker
-    FROM gcr.io/forgerock-io/icf/docker-build:1.5.20.5
+    FROM gcr.io/forgerock-io/rcs/docker-build:1.5.20.8-latest-postcommit
 
     COPY logback.xml /opt/openicf/lib/framework
     COPY ConnectorServer.properties /opt/openicf/conf
