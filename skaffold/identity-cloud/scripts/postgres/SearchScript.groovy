@@ -185,14 +185,19 @@ try {
 
         handler connectorObject
     })
+
+    if (pageSize <= 0) {
+        // There are no more page left
+        pagedResultsCookie = null
+    }
+
+    new SearchResult(pagedResultsCookie, -1)
 } catch (e) {
-    println('EXCEPTION: ' + e.getMessage())
-    println('EXCEPTION: ' + e)
+    def message = "${operation.name()} operation of type: ${objectClass.objectClassValue} is not supported."
+
+    log.error message
+    log.error "Exception: ${e.getMessage()}."
+
+    throw new UnsupportedOperationException(message)
 }
 
-if (pageSize <= 0) {
-    // There are no more page left
-    pagedResultsCookie = null
-}
-
-return new SearchResult(pagedResultsCookie, -1)
