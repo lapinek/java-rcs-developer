@@ -9,11 +9,12 @@
     * [Attaching a Debugger](#developing-debugging-scripts-debugger)
 * [Scripting Context](#developing-connector-context)
 * [Connector Configuration](#developing-connector-configuration)
-    * [Custom (Sensitive) Configuration](#developing-connector-configuration-custom-configuration)
+    * ["configurationProperties"](#developing-connector-configuration-configuration-properties)
+* [Bindings](#developing-bindings)
 * [Example Connectors](#example-connectors)
     * [Scripted SQL Connector](#example-connectors-scripted-sql)
 
-### <a id="developing-ide" name="developing-ide"></a>Choosing IDE
+## <a id="developing-ide" name="developing-ide"></a>Choosing IDE
 
 [Back to Contents](#contents)
 
@@ -23,11 +24,11 @@ In general, you can get a better support for Groovy in a Java-specialized IDE, l
 
 In a non-Java or polyglottal IDE, you will be able to maintain your RCS scripts, but Groovy support might not be provided or come from extensions maintained by individuals. For example, as of this writing, Visual Code Studio, a very popular code editor, has no available Groovy debugger extension. This means that, if you need to attach a debugger to your RCS process, you'd have to go with something like IntelliJ.
 
-### <a id="developing-debugging-scripts" name="developing-debugging-scripts"></a>Debugging Scripts
+## <a id="developing-debugging-scripts" name="developing-debugging-scripts"></a>Debugging Scripts
 
 [Back to Contents](#contents)
 
-#### <a id="developing-debugging-scripts-custom-logs" name="developing-debugging-scripts-custom-logs"></a>Debugging Scripts > Custom Logs
+### <a id="developing-debugging-scripts-custom-logs" name="developing-debugging-scripts-custom-logs"></a>Debugging Scripts > Custom Logs
 
 [Back to Contents](#contents)
 
@@ -69,7 +70,7 @@ This will allow to print out content of objects and strings without the addition
 [rcs] TEST
 ```
 
-#### <a id="developing-debugging-scripts-try-catch" name="developing-debugging-scripts-try-catch"></a>Debugging Scripts > Try and Catch
+### <a id="developing-debugging-scripts-try-catch" name="developing-debugging-scripts-try-catch"></a>Debugging Scripts > Try and Catch
 
 [Back to Contents](#contents)
 
@@ -77,15 +78,15 @@ Generally, you should wrap your code with a `try/catch` block, and observe custo
 
 ```groovy
 import org.identityconnectors.common.logging.Log
-// . . .
+[ . . . ]
 
 def log = log as Log
 
 try {
     def operation = operation as OperationType
-    // . . .
+    [ . . . ]
     switch (objectClass) {
-        // . . .
+        [ . . . ]
     }
 } catch (Exception e) {
     def message = "${operation.name()} operation of type: ${objectClass.objectClassValue} is not supported."
@@ -97,7 +98,7 @@ try {
 }
 ```
 
-> [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/UnsupportedOperationException.html) is a Java exception [provided automatically in Groovy scripts among with other most commonly used classes](https://groovy-lang.org/structure.html#_default_imports).
+> [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/UnsupportedOperationException.html) is a Java exception, which, among with other most commonly used classes, is [automatically provided in Groovy scripts](https://groovy-lang.org/structure.html#_default_imports).
 
 Script error Handled in this way will result in a message displayed on the connector data page in IDM Admin:
 
@@ -112,7 +113,7 @@ Passing script identifiers and the exception information to the `log` object met
 
 > Employing the `try/catch` technique is not Skaffold-specific and outlined here for completeness.
 
-#### <a id="developing-debugging-scripts-debugger" name="developing-debugging-scripts-debugger"></a>Debugging Scripts > Attaching a Debugger
+### <a id="developing-debugging-scripts-debugger" name="developing-debugging-scripts-debugger"></a>Debugging Scripts > Attaching a Debugger
 
 [Back to Contents](#contents)
 
@@ -129,7 +130,7 @@ In a Kubernetes cluster, RCS will run in a remote Java Virtual Machine (JVM). In
         You could rely on the default JDWP options defined in your RCS Docker container by supplying the expected `jpda` argument to the entry point script at `/opt/openicf/bin/docker-entrypoint.sh`:
 
         ```sh
-        . . .
+        [ . . . ]
         if [ "$1" = "jpda" ] ; then
         if [ -z "$JPDA_TRANSPORT" ]; then
             JPDA_TRANSPORT="dt_socket"
@@ -146,35 +147,21 @@ In a Kubernetes cluster, RCS will run in a remote Java Virtual Machine (JVM). In
         OPENICF_OPTS="$OPENICF_OPTS $JPDA_OPTS"
         shift
         fi
-        . . .
+        [ . . . ]
         ```
 
         > JDWP is a part of Java Platform Debugger Architecture; hence, the JPDA abbreviation used in the ICF code.
-
-        <!-- In the provided here Skaffold deployment example, the `docker-entrypoint.sh` script is called from the [RCS Kubernetes manifest](/rcs/identity-cloud/rcs.yaml#26): -->
-
-        <!-- `rcs.yaml`
-        ```sh
-        . . .
-        command: ['bash', '-c']
-        args:
-        - export OPENICF_OPTS="-Dconnectorserver.connectorServerName=$HOSTNAME . . . "
-          && /opt/openicf/bin/docker-entrypoint.sh;
-        . . .
-        ``` -->
-
-        <!-- To engage the default JDWP options, append the `jpda` argument at the end of this command to enable the default JDWP configuration: -->
 
         You can add the `jpda` argument when you call the Docker entrypoint script in your Kubernetes manifest for RCS:
 
         `rcs.yaml`
         ```sh
-        . . .
+        [ . . . ]
         command: ['bash', '-c']
         args:
-        - export OPENICF_OPTS="-Dconnectorserver.connectorServerName=$HOSTNAME . . . "
+        - export OPENICF_OPTS="-Dconnectorserver.connectorServerName=$HOSTNAME [ . . . ]"
           && /opt/openicf/bin/docker-entrypoint.sh jpda;
-        . . .
+        [ . . . ]
         ```
 
     * Provide custom JDWP options at RCS launch.
@@ -183,13 +170,13 @@ In a Kubernetes cluster, RCS will run in a remote Java Virtual Machine (JVM). In
 
         `rcs.yaml`
         ```sh
-        . . .
+        [ . . . ]
         command: ['bash', '-c']
         args:
-        - export OPENICF_OPTS="-Dconnectorserver.connectorServerName=$HOSTNAME . . .
+        - export OPENICF_OPTS="-Dconnectorserver.connectorServerName=$HOSTNAME [ . . . ]
           -agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=n"
           && /opt/openicf/bin/docker-entrypoint.sh;
-        . . .
+        [ . . . ]
         ```
 
     * Provide (custom) JDWP options at runtime.
@@ -309,7 +296,7 @@ In a Kubernetes cluster, RCS will run in a remote Java Virtual Machine (JVM). In
 
     Hopefully, this helps to understand the process of attaching a debugger to your RCS instance running in a Kubernetes cluster, and change it according to your specific requirements.
 
-###  <a id="developing-connector-context" name="developing-connector-context"></a>On Scripting Context
+##  <a id="developing-connector-context" name="developing-connector-context"></a>On Scripting Context
 
 [Back to Contents](#contents)
 
@@ -326,12 +313,12 @@ The bindings in a connector script will depend on the connector and script types
     configuration.propertyBag.myCustomProperties.add('key': 'value')
     ```
 
-    You can provide initial content for `propertyBag` in the connector configuration via `configurationProperties.customConfiguration` when you [configure your scripted connector over REST](https://backstage.forgerock.com/docs/idcloud/latest/solution-scripted-rest-connector.html).
+    You can provide initial content for `propertyBag` in the connector configuration via "configurationProperties.customConfiguration" when you [configure your scripted connector over REST](https://backstage.forgerock.com/docs/idcloud/latest/solution-scripted-rest-connector.html).
 
     See the [Connector Configuration > Custom (Sensitive) Configuration](#developing-connector-configuration-custom-configuration) for additional details.
 
 
-###  <a id="developing-connector-configuration" name="developing-connector-configuration"></a>Connector Configuration
+##  <a id="developing-connector-configuration" name="developing-connector-configuration"></a>Connector Configuration
 
 [Back to Contents](#contents)
 
@@ -339,185 +326,15 @@ The docs provide general steps of [Configuring connectors over REST](https://bac
 
 In this section, we will go over some connector configuration settings, using of which may benefit from additional details.
 
-####  <a id="developing-connector-configuration-custom-configuration" name="developing-connector-configuration-custom-configuration"></a>Connector Configuration > Custom (Sensitive) Configuration
+###  <a id="developing-connector-configuration-configuration-properties" name="developing-connector-configuration-configuration-properties"></a>Connector Configuration > "configurationProperties"
 
 [Back to Contents](#contents)
 
-The docs provide an [example of using customConfiguration and customSensitiveConfiguration](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/kerberos.html#ssh-kerberos-config):
+The "configurationProperties" key in connector configuration contains settings that are specific to the target system.
 
-```json
-"customConfiguration" : "kadmin {
-    cmd = '/usr/sbin/kadmin.local';
-    user = 'openidm/admin';
-    default_realm = 'EXAMPLE.COM'
-}",
-"customSensitiveConfiguration" : "kadmin {password = 'Passw0rd'}",
-```
+## <a id="developing-bindings" name="developing-bindings"></a>Bindings
 
-It might not be entirely clear, though, how (and why) this Groovy-like syntax works, and how custom configuration options set this way could be used.
-
-The content provided in `customConfiguration` will be evaluated with [a matching parse method of the groovy.util.ConfigSlurper class](https://docs.groovy-lang.org/latest/html/gapi/groovy/util/ConfigSlurper.html#method_summary).
-
-<!-- For reference: [OpenICF > Connectors > ScriptedConfiguration](https://stash.forgerock.org/projects/OPENICF/repos/connectors/browse/groovy-common/src/main/java/org/forgerock/openicf/connectors/groovy/ScriptedConfiguration.java#563-569,576-584). -->
-
-In particular, the [parse(String script)](https://docs.groovy-lang.org/next/html/gapi/groovy/util/ConfigSlurper.html#parse(java.lang.String)) method accepts a special script that will set variables using variable assignment or a [Closure](https://groovy-lang.org/closures.html) syntax:
-
-* Assigning variables:
-
-    ```json
-    "customConfiguration": "key1 = 'value1';"
-    ```
-
-* Defining closures:
-
-    ```json
-    "customConfiguration": "key1 { key2 = 'value2'; };"
-    ```
-
-If you use a closure for that purpose, the word preceding the closure becomes a property that contains a map with keys set by the closure code. Using closure syntax may reduce the redundant clutter with a map referenced multiple times. It also allow for processing before a variable (which will become a configuration property) is set. But, you can also use variable assignment or dot notation for creating a map.
-
-For example, you could have the following configuration for your connector:
-
-`provisioner.openicf-my-connector-name.json`
-```json
-{
-    "connectorRef": {
-        "connectorHostRef": "rcs",
-        "bundleVersion": "1.5.20.6-SNAPSHOT",
-        "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
-        "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
-    },
-    "configurationProperties": {
-        "customConfiguration": "key1 = 'value1'; key2 = 'value2'; map1 { key1 = 'value3'; key2 = 'value4'; }; map2.key1 = 'value5'; map2.key2 = 'value6'; map3 = [ key1: 'value7', key2: 'value8' ];",
-        . . .
-    }
-    . . .
-}
-```
-
-Note that multi-line statements are not supported in JSON. This means, you put all `customConfiguration` in one line.
-
-To separate multiple Groovy statements in `customConfiguration` use semicolons, or you could use new lines too:
-
-```json
-. . .
-"customConfiguration": "key1 = 'value1'\n key2 = 'value2'\n map1 { key1 = 'value3'\n key2 = 'value4'\n }\n map2.key1 = 'value5'\n map2.key2 = 'value6'\n map3 = [ key1: 'value7', key2: 'value8' ]\n",
-. . .
-```
-
-
-The parsed configuration will be used to populate the scripts' `configuration.propertyBag` binding. For example:
-
-`TestScript.groovy`
-```groovy
-import org.identityconnectors.common.logging.Log
-import org.forgerock.openicf.connectors.groovy.ScriptedConfiguration
-
-def log = log as Log
-def configuration = configuration as ScriptedConfiguration
-
-log.info configuration.propertyBag.key1
-log.info configuration.propertyBag.key2
-log.info configuration.propertyBag.map1.key1
-log.info configuration.propertyBag.map1.key2
-log.info configuration.propertyBag.map2.key1
-log.info configuration.propertyBag.map2.key2
-log.info configuration.propertyBag.map3.key1
-log.info configuration.propertyBag.map3.key2
-```
-
-```
-[rcs] Jul 19, 2022 12:56:34 AM INFO  TestScript: value1
-[rcs] Jul 19, 2022 12:56:34 AM INFO  TestScript: value2
-[rcs] Jul 19, 2022 12:56:34 AM INFO  TestScript: value3
-[rcs] Jul 19, 2022 12:56:34 AM INFO  TestScript: value4
-[rcs] Jul 19, 2022 12:56:34 AM INFO  TestScript: value5
-[rcs] Jul 19, 2022 12:56:34 AM INFO  TestScript: value6
-[rcs] Jul 19, 2022 12:56:34 AM INFO  TestScript: value7
-[rcs] Jul 19, 2022 12:56:34 AM INFO  TestScript: value8
-```
-
-If you don't want your connector configuration to be exposed in clear text, you can also supply `propertyBag` content in the connector's `customSensitiveConfiguration` configuration property. The information defined with the `customSensitiveConfiguration` key will be encrypted on IDM side; its content will become a guarded string, and it will continue to be encrypted in transport to the RCS.
-
-The properties defined in `customSensitiveConfiguration` will overwrite the same keys provided in `customConfiguration`:
-
-`provisioner.openicf-my-connector-name.json`
-```json
-{
-    . . .
-    "configurationProperties": {
-        "customConfiguration": "key1 = 'value1'; key2 = 'value2'; map1 { key1 = 'value3'; key2 = 'value4'; }; map2.key1 = 'value5'; map2.key2 = 'value6'; map3 = [ key1: 'value7', key2: 'value8' ];",
-        "customSensitiveConfiguration": "key1 = 'sensitive-value1'; map1 { key1 = 'sensitive-value3'; }; map2.key1 = 'sensitive-value5'; map3 = [ key1: 'sensitive-value7' ];",
-        . . .
-    }
-    . . .
-}
-```
-
-`TestScript.groovy`
-```groovy
-import org.identityconnectors.common.logging.Log
-import org.forgerock.openicf.connectors.groovy.ScriptedConfiguration
-
-def log = log as Log
-def configuration = configuration as ScriptedConfiguration
-
-log.info configuration.propertyBag.key1
-log.info configuration.propertyBag.key2
-log.info configuration.propertyBag.map1.key1
-log.info configuration.propertyBag.map1.key2
-log.info configuration.propertyBag.map2.key1
-log.info configuration.propertyBag.map2.key2
-log.info configuration.propertyBag.map3.key1
-log.info configuration.propertyBag.map3.key2
-```
-
-```
-[rcs] Jul 19, 2022 1:29:48 AM INFO  TestScript: sensitive-value1
-[rcs] Jul 19, 2022 1:29:48 AM INFO  TestScript: value2
-[rcs] Jul 19, 2022 1:29:48 AM INFO  TestScript: sensitive-value3
-[rcs] Jul 19, 2022 1:29:48 AM INFO  TestScript: value4
-[rcs] Jul 19, 2022 1:29:48 AM INFO  TestScript: sensitive-value5
-[rcs] Jul 19, 2022 1:29:48 AM INFO  TestScript: value6
-[rcs] Jul 19, 2022 1:29:48 AM INFO  TestScript: sensitive-value7
-[rcs] Jul 19, 2022 1:29:48 AM INFO  TestScript: value8
-```
-
-As with many things processed on the IDM side, you can use [property value substitution](https://backstage.forgerock.com/docs/idm/7.2/setup-guide/using-property-substitution.html) in `custom(Sensitive)Configuration`.
-
-For example:
-
-```json
-{
-    . . .
-    "configurationProperties": {
-        "customConfiguration": "oauth2 { provider = 'https://&{fqdn}/'; client_id = 'client-id'; }",
-        "customSensitiveConfiguration": "oauth2 { client_secret = 'client-secret' }",
-        . . .
-    }
-    . . .
-}
-```
-
-To output with `log.info`, you could concatenate an object with a string:
-
-```groovy
-log.info 'PROPERTY BAG: ' + configuration.propertyBag
-```
-
-```
-[rcs] Jul 20, 2022 12:41:12 AM INFO  TestScript: PROPERTY BAG: [oauth2:[client_secret:client-secret, provider:https://openam-dx-kl.forgeblocks.com/, client_id:client-id]]
-```
-
-You can also `println` an object (during your _development_):
-
-```groovy
-println configuration.propertyBag
-```
-
-```
-[rcs] [oauth2:[client_secret:client-secret, provider:https://openam-dx-kl.forgeblocks.com/, client_id:client-id]]
-```
+[Back to Contents](#contents)
 
 ## <a id="example-connectors" name="example-connectors"></a>Example Connectors
 
