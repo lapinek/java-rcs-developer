@@ -10,6 +10,27 @@
 * [Connector Configuration](#developing-connector-configuration)
     * ["configurationProperties"](#developing-connector-configuration-configuration-properties)
         * ["customConfiguration" and "customSensitiveConfiguration"](#developing-connector-configuration-configuration-properties-custom-configuration)
+    * ["systemActions"](#developing-connector-configuration-system-actions)
+        * [Defining System Action](#developing-connector-configuration-system-actions-definition)
+            * ["scriptId"](#developing-connector-configuration-system-actions-definition-script-id)
+            * ["actions"](#developing-connector-configuration-system-actions-definition-actions)
+                * ["systemType"](#developing-connector-configuration-system-actions-definition-actions-system-type)
+                * ["actionType"](#developing-connector-configuration-system-actions-definition-actions-action-type)
+                * ["actionSource" _or_ "actionFile"](#developing-connector-configuration-system-actions-definition-actions-action-source-or-file)
+        * [Invoking via REST](#developing-connector-configuration-system-actions-rest)
+            * [Parts of the Request](#developing-connector-configuration-system-actions-rest-parts)
+                * [/openidm/system/\<connector-name\> (connection endpoint)](#developing-connector-configuration-system-actions-rest-parts-path)
+                * [?_action=script (execute script)](#developing-connector-configuration-system-actions-rest-parts-action)
+                * [&scriptId=\<script_id\> (scripts to execute and return from)](#developing-connector-configuration-system-actions-rest-parts-script-id)
+                * [request body (script arguments)](#developing-connector-configuration-system-actions-rest-parts-request-body)
+                * [&scriptExecuteMode=resource ("run on resource")](#developing-connector-configuration-system-actions-rest-parts-execute-mode)
+            * ["run on resource" vs "run on connector"](#developing-connector-configuration-system-actions-rest-execute-modes)
+        * [Invoking from IDM Script](#developing-connector-configuration-system-actions-idm-script)
+            * [Syntax](#developing-connector-configuration-system-actions-idm-script-syntax)
+            * [Examples](#developing-connector-configuration-system-actions-idm-script-examples)
+                * ["run on connector"](#developing-connector-configuration-system-actions-idm-script-examples-on-connector)
+                * ["run on resource"](#developing-connector-configuration-system-actions-idm-script-examples-on-resource)
+        * [Support in Connectors](#developing-connector-configuration-system-actions-support)
 * [Example Connectors](#example-connectors)
     * [Scripted SQL Connector](#example-connectors-scripted-sql)
 
@@ -637,6 +658,1027 @@ println configuration.propertyBag
 ```
 
 > Unfortunately, [one has to be told what _IDM_ variables are](https://backstage.forgerock.com/docs/idm/7.2/setup-guide/using-property-substitution.html#expression-evaluation) in Identity Cloud. You cannot see it for yourself.
+
+###  <a id="developing-connector-configuration-system-actions" name="developing-connector-configuration-system-actions"></a>Connector Configuration > "systemActions"
+
+[Back to Contents](#contents)
+
+A remote connector is a [system object](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/appendix-system-objects.html).
+
+You can initiate a scripted "action" on a system object. You can define your action under the "systemActions" key in the connector configuration.
+
+> Here, connector configuration is the final JSON sent to the `/openidm/config/provisioner.openicf/<connector-name>` endpoint to register your connector in IDM, as described in [Configure connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST).
+
+Running a remote script may serve as the means of making a change to or getting a response from the remote system without authorizing to that system or changing its firewall rules.
+
+A scripted action on a remote connector could also be used to change the connector behavior. The script will have access to the libraries available to the connector and to the connector-specific information.
+
+####  <a id="developing-connector-configuration-system-actions-definition" name="developing-connector-configuration-system-actions-definition"></a>Connector Configuration > "systemActions" > Defining System Action
+
+[Back to Contents](#contents)
+
+Each system action is defined with the following keys:
+
+* <a id="developing-connector-configuration-system-actions-definition-script-id" name="developing-connector-configuration-system-actions-definition-script-id"></a>"scriptId"
+
+    [Back to Contents](#contents)
+
+    The ID you will use in your request to invoke this system action.
+
+    For example:
+
+    `provisioner.openicf-<connector-name>.json`
+
+    ```json
+    {
+        "connectorRef": {
+            "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
+            [ . . . ]
+        },
+        [ . . . ]
+        "systemActions": [
+            {
+                "scriptId" : "script-1",
+                "actions" : [
+                    {
+                        "systemType" : ".*ScriptedConnector",
+                        "actionType" : "groovy",
+                        "actionSource" : "return true"
+                    }
+                ]
+            },
+            [ . . . ]
+        ]
+    }
+    ```
+
+* <a id="developing-connector-configuration-system-actions-definition-actions" name="developing-connector-configuration-system-actions-definition-actions"></a>"actions"
+
+    [Back to Contents](#contents)
+
+    For each script ID, you can specify one or more action in an array of action definitions.
+
+    Each action definition consists of the following keys:
+
+    * <a id="developing-connector-configuration-system-actions-definition-actions-system-type" name="developing-connector-configuration-system-actions-definition-actions-system-type"></a>"systemType"
+
+        [Back to Contents](#contents)
+
+        A _wildcard_ reference to the connector type. Each action will be performed in the context of the specified connector type, for which a scripting environment will be built.
+
+        You GET the connector type in "connectorRef.connectorName" in the core connector configuration JSON received from the `/openidm/system?_action=availableConnectors` endpoint.
+
+        Based on the provided "systemType", IDM will build appropriate script context for your remote system action.
+
+    * <a id="developing-connector-configuration-system-actions-definition-actions-action-type" name="developing-connector-configuration-system-actions-definition-actions-action-type"></a>"actionType"
+
+        [Back to Contents](#contents)
+
+        A language reference, indicating which language the system action script is written and should be interpreted in.
+
+        For a Java RCS, the action type is always "groovy".
+
+    * <a id="developing-connector-configuration-system-actions-definition-actions-action-source-or-file" name="developing-connector-configuration-system-actions-definition-actions-action-source-or-file"></a>"actionSource" _or_ "actionFile"
+
+        [Back to Contents](#contents)
+
+        The script content can be provided inline, as the value of "actionSource", _or_ in "actionFile" as a relative path reference to a script on the IDM host:
+
+        * "actionFile"
+
+            The reference to a script file stored in the IDM installation folder. In Identity Cloud, you do not have access to the IDM file system.
+
+            This means that currently in Identity Cloud you can customize your system action with the "actionSource" key content and/or by passing in parameters in your system action request in the (REST) request body or as the additional params in an IDM script.
+
+        * "actionSource"
+
+            The actual script content sent to RCS to be executed.
+
+            Because JSON does not support multiline statements, separate your statements in "actionSource" with semicolons or new lines.
+
+            For example:
+
+            `provisioner.openicf-<connector-name>.json`
+            ```json
+            {
+                "connectorRef": {
+                    "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
+                    [ . . . ]
+                },
+                [ . . . ]
+                "systemActions": [
+                    {
+                        "scriptId" : "script-1",
+                        "actions" : [
+                            {
+                                "systemType" : ".*ScriptedConnector",
+                                "actionType" : "groovy",
+                                "actionSource" : "println 'actionSource bindings: '; println binding.variables;"
+                            },
+                            {
+                                "systemType" : ".*ScriptedConnector",
+                                "actionType" : "groovy",
+                                "actionSource" : "println 'actionSource bindings: ' \nprintln binding.variables"
+                            }
+                        ]
+                    },
+                    [ . . . ]
+                ]
+            }
+            ```
+
+            > You can use a formatting tool where your script content is converted into a JSON-acceptable format; for example, https://www.freeformatter.com/json-escape.html
+            >
+            > You can consult https://www.json.org/json-en.html on the acceptable JSON syntax.
+
+
+You can use either of the two ways to invoke a scripted system action on a remote connector:
+* [Invoking via REST](#developing-connector-configuration-system-actions-rest)
+* [Invoking from IDM Script](#developing-connector-configuration-system-actions-idm-script)
+
+####  <a id="developing-connector-configuration-system-actions-rest" name="developing-connector-configuration-system-actions-rest"></a>Connector Configuration > "systemActions" > Invoking via REST
+
+[Back to Contents](#contents)
+
+You can send a request via IDM's REST API to [run a script on a system object](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html#script-system-object).
+
+You will need to authorize the request as an IDM administrator.
+
+In Identity Cloud, this means providing an OAuth 2.0 bearer token in the `Authorization` header of your request. The token needs to be obtained with a client mapped to an IDM subject associated with the admin role.
+
+> The easiest way of accomplishing this type of authorization for demonstrational purposes is signing in the IDM admin UI, and using the browser console for making an HTTP request with `jQuery`.
+>
+> Internally, `jQuery` uses `XMLHttpRequest` (XHR), and such requests are automatically authorized by the IDM admin UI.
+>
+> We will use this technique in the examples below.
+
+To execute a scripted system action over REST, you will need to make the following POST request:
+
+`/openidm/system/<connector-name>`?`_action=script`&`scriptId=<script_id>`[&`scriptExecuteMode=resource`]
+
+#####  <a id="developing-connector-configuration-system-actions-rest-parts" name="developing-connector-configuration-system-actions-rest-parts"></a>Connector Configuration > "systemActions" > Invoking via REST > Parts of the Request:
+
+[Back to Contents](#contents)
+
+* <a id="developing-connector-configuration-system-actions-rest-parts-path" name="developing-connector-configuration-system-actions-rest-parts-path"></a>`/openidm/system/<connector-name>`
+
+    [Back to Contents](#contents)
+
+    The IDM's endpoint, at which your remote connection is registered.
+
+    As an example, `/openidm/system/groovy` path in your system action request will correspond to a remote connection registered at `/openidm/config/provisioner.openicf/groovy`, as described in the final step of the [Configure connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST) doc.
+
+* <a id="developing-connector-configuration-system-actions-rest-parts-action" name="developing-connector-configuration-system-actions-rest-parts-action"></a>`?_action=script`
+
+    [Back to Contents](#contents)
+
+    When executing a script on a remote connector, the `_action` parameter value is always to be `script`.
+
+* <a id="developing-connector-configuration-system-actions-rest-parts-script-id" name="developing-connector-configuration-system-actions-rest-parts-script-id"></a>`&scriptId=<script_id>`
+
+    [Back to Contents](#contents)
+
+    The identifier of the system action you are trying to invoke, which is saved in your connector configuration JSON under the "systemActions.scriptId" key.
+
+    For example, consider the following system action definition:
+
+    `provisioner.openicf-<connector-name>.json`
+    ```json
+    {
+        "connectorRef": {
+            "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
+            [ . . . ]
+        },
+        [ . . . ]
+        "systemActions": [
+            {
+                "scriptId" : "script-1",
+                "actions" : [
+                    {
+                        "systemType" : ".*ScriptedConnector",
+                        "actionType" : "groovy",
+                        "actionSource" : "println 'actionSource bindings: '; println binding.variables;"
+                    }
+                ]
+            },
+            [ . . . ]
+        ]
+    }
+    ```
+
+    `IDM Admin Browser Console`
+    ```javascript
+    (async function () {
+        var data = await $.ajax('/openidm/system/groovy?_action=script&scriptId=script-1', {
+            method: 'POST'
+        }).then((data) => {
+            return data;
+        });
+
+        console.log(JSON.stringify(data, null, 4));
+    }());
+    ```
+
+    Because this particular "actionSource" script does not return anything, the response data will bear an empty result from the only action defined and executed for this script ID:
+
+    `Browser Network Response`
+
+    ```json
+    {
+        "actions": [
+            {
+                "result": null
+            }
+        ]
+    }
+    ```
+
+    > In Groovy, you don't have to explicitly return anything from a script; the result of the last statement is returned automatically.
+    >
+    > However, in the provided example, the last statement is [println](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/PrintWriter.html#println(java.lang.String)), which returns nothing; hence, the `null` result in the response.
+
+    To return something in the response, end your script with a statement returning "serializable" value. A value is serializable if it can be converted into a valid [JSON text](https://www.rfc-editor.org/rfc/rfc7159.html).
+
+    In a Java RCS, instances of the following classes (and the corresponding primitives) are serializable and could be returned from your script:
+
+    * [Boolean](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Boolean.html) (and `boolean`)
+    * [Integer](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html) (and `int`)
+    * [Long](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Long.html) (and `long`)
+    * [Float](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Float.html) (and `float`)
+    * [Double](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Double.html) (and `double`)
+    * [BigDecimal](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/math/BigDecimal.html)
+    * [BigInteger](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/math/BigInteger.html)
+    * [String](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html)
+    * [Character](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Character.html) (and `char`)
+    * [Byte](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Byte.html) (and `byte` and `byte[]`)
+    * [URI](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/URI.html)
+    * [File](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/File.html)
+    * [Class](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Class.html)
+    * [List](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/List.html)
+    * [Map](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html) (but not [SortedMap](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/SortedMap.html))
+    * [Map.Entry](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.Entry.html)
+    * [Set](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Set.html) (but not [SortedSet](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/SortedSet.html))
+    * [Locale](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Locale.html)
+    * [GuardedString](https://docs.oracle.com/en/middleware/idm/identity-governance/12.2.1.3/omicf/index.html?org/identityconnectors/common/security/GuardedString.html)
+    * [GuardedByteArray](https://docs.oracle.com/en/middleware/idm/identity-governance/12.2.1.3/omicf/index.html?org/identityconnectors/common/security/GuardedByteArray.html)
+
+    > There are also a number of built-in ICF-specific Handlers and Mappings that can consume and return serialized values.
+
+    Generally, if you try to return a non-serializable value from your script you will receive an error message in the response similar to the following:
+
+    ```json
+    {
+        "actions": [
+            {
+                "error": "No serializer for class: class java.util.HashMap$Node"
+            }
+        ]
+    }
+    ```
+
+    or
+
+    ```json
+    {
+        "actions": [
+            {
+                "error": "No serializer for class: class groovy.lang.Script"
+            }
+        ]
+    }
+    ```
+
+    As an example of a serializable value, you could return a list (as the result of an arbitrary operation in remotely executed script):
+
+    `provisioner.openicf-<connector-name>.json`
+    ```json
+    {
+        "connectorRef": {
+            "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
+            [ . . . ]
+        },
+        [ . . . ]
+        "systemActions": [
+            {
+                "scriptId" : "script-1",
+                "actions" : [
+                    {
+                        "systemType" : ".*ScriptedConnector",
+                        "actionType" : "groovy",
+                        "actionSource" : "println 'actionSource bindings: '; println binding.variables; [1, 2, 3];"
+                    }
+                ]
+            },
+            [ . . . ]
+        ]
+    }
+    ```
+
+    In the response, you will now see an array of results—one "result" for each action defined for the system action:
+
+    `Browser Network Response`
+
+    ```json
+    {
+        "actions": [
+            {
+                "result": [
+                    1,
+                    2,
+                    3
+                ]
+            }
+        ]
+    }
+    ```
+
+    At the same time, this "actionSource" script will output its variable bindings in the RCS logs:
+
+    ```
+    [rcs] actionSource bindings:
+    [rcs] [operation:RUNSCRIPTONCONNECTOR, options:OperationOptions: {CAUD_TRANSACTION_ID:1659985544219-55e3d75b5a1adc2a72f9-134922/0/4}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@73133988, log:org.identityconnectors.common.logging.Log@2cba672e]
+    ```
+
+    Note that the `operation` binding value reveals the [script on connector operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-script-on-connector.html) environment, which is the default mode for a remote script execution.
+
+    In this mode,  the script specified in "actionSource" (or "actionFile") is executed in a context built for a [Run on connector script](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/scripts/script-run-on-connector.html), with the corresponding variable bindings.
+
+    You can read about common RCS script bindings in [Variables available to all Groovy scripts](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/groovy-operations.html#groovy-script-variables), and find more specific information in the sections designated to a particular script operation.
+
+* <a id="developing-connector-configuration-system-actions-rest-parts-request-body" name="developing-connector-configuration-system-actions-rest-parts-request-body"></a>`request body`
+
+    [Back to Contents](#contents)
+
+    The key/value pairs provided as JSON in the request body will be available to the remotely executed script as variables.
+
+    For example, you could execute the following request:
+
+    `IDM Admin Browser Console`
+
+    ```javascript
+    (async function () {
+        var data = await $.ajax('/openidm/system/groovy?_action=script&scriptId=script-1', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify({
+                arg1: 'value1'
+            })
+        }).then((data) => {
+            return data;
+        });
+
+        console.log(JSON.stringify(data, null, 4));
+    }());
+    ```
+
+    In the RCS logs, in the bindings available to your action script, you will now see `arg1`, which was a key in your request body JSON:
+
+    ```
+    [rcs] actionSource bindings:
+    [rcs] [arg1:value1, operation:RUNSCRIPTONCONNECTOR, options:OperationOptions: {CAUD_TRANSACTION_ID:1659985960800-d72d565f715c26629c97-65231/0/4}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@73133988, log:org.identityconnectors.common.logging.Log@2cba672e]
+    ```
+
+    Different types of values in the request body JSON will be presented in the script as the following types:
+
+    * `object` > [java.util.HashMap](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/HashMap.html)
+    * `number` > [java.lang.Integer](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Integer.html) or [java.lang.Double](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Double.html)
+    * `array` > [java.util.ArrayList](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/ArrayList.html)
+    * `null` > [org.codehaus.groovy.runtime.NullObject](https://docs.groovy-lang.org/docs/latest/html/api/org/codehaus/groovy/runtime/NullObject.html)
+    * `boolean` > [java.lang.Boolean](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Boolean.html)
+    * `string` >  [java.lang.String](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html)
+    * `undefined` > Will NOT be present.
+
+    For example, providing this request body:
+
+    ```js
+    data: JSON.stringify({
+        arg1: 'value1',
+        arg2: {
+            arg3: 1,
+            arg4: 1.1,
+            arg5: [
+                'value3',
+                'value4'
+            ],
+            arg6: true,
+            arg7: null,
+            arg8: undefined
+        }
+    })
+    ```
+
+    will yield the following output in the RCS logs:
+
+    ```
+    [arg2:[arg3:1, arg5:[value3, value4], arg4:1.1, arg7:null, arg6:true], arg1:value1, operation:RUNSCRIPTONCONNECTOR, options:OperationOptions: {CAUD_TRANSACTION_ID:1661235801641-96bc95f49bbf8e27d3e4-54089/0/4}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@26f4d226, log:org.identityconnectors.common.logging.Log@1726fedb]
+    ```
+
+
+* <a id="developing-connector-configuration-system-actions-rest-parts-execute-mode" name="developing-connector-configuration-system-actions-rest-parts-execute-mode"></a>`&scriptExecuteMode=resource` (optional and IMPORTANT)
+
+    [Back to Contents](#contents)
+
+    The absence or presence of this parameter in a system action request will determine one of the two execution modes for the scripted system action:
+
+    * By default, _without_ this optional parameter populated with this particular value, the script you specify in "actionSource" or "actionFile" script will ["run on connector"](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/scripts/script-run-on-connector.html).
+
+        In this mode, the script you specify in "actionSource" or "actionFile" will be sent to the RCS, where your scripted connector package is deployed. The ICF framework will execute the script in the connector type-specific context, with all the variable bindings available in the script.
+
+        This has been the mode illustrated in all previous examples.
+
+    * Including `&scriptExecuteMode=resource` in a system action request will cause the remote script to ["run on resource"](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/scripts/script-run-on-resource.html).
+
+        In this mode, a script hosted on the RCS will be executed. The content provided either in "actionSource" or via "actionFile" will be available as the `scriptText` variable to the hosted script.
+
+        Exactly which script hosted on RCS is going to be executed is specified in the connector configuration under the "scriptOnResourceScriptFileName" key.
+
+        For example:
+
+        `provisioner.openicf-<connector-name>.json`
+        ```json
+        {
+            "connectorRef": {
+                "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
+                [ . . . ]
+            },
+            "configurationProperties": {
+                "scriptExtensions": [
+                    "groovy"
+                ],
+                "scriptRoots": [
+                    "/opt/openicf/scripts/<connector-name>"
+                ],
+                "scriptOnResourceScriptFileName": "ScriptOnResourceScript.groovy",
+                [ . . . ]
+            },
+            [ . . . ]
+            "systemActions": [
+                {
+                    "scriptId" : "script-1",
+                    "actions" : [
+                        {
+                            "systemType" : ".*ScriptedConnector",
+                            "actionType" : "groovy",
+                            "actionSource" : "println 'actionSource bindings: '; println binding.variables; [1, 2, 3];"
+                        }
+                    ]
+                },
+                [ . . . ]
+            ]
+        }
+        ```
+
+        Then, in the script referenced in "scriptOnResourceScriptFileName", you can get the "actionSource" (or "actionFile") script content from the `scriptText` binding.
+
+        For example:
+
+        `ScriptOnResourceScript.groovy`
+
+        ```groovy
+        [ . . . ]
+        println 'ScriptOnResourceScript.groovy bindings: ' + binding.variables
+        ```
+
+        `IDM Admin Browser Console`
+
+        ```javascript
+        (async function () {
+            var data = await $.ajax('/openidm/system/groovy?_action=script&scriptId=script-1&scriptExecuteMode=resource', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify({
+                    arg1: 'value1'
+                })
+            }).then((data) => {
+                return data;
+            });
+
+            console.log(JSON.stringify(data, null, 4));
+        }());
+        ```
+
+        `RCS logs`
+
+        ```
+        [rcs] ScriptOnResourceScript.groovy bindings: [scriptArguments:[arg1:value1], scriptText:println 'actionSource bindings: '; println binding.variables; [1, 2, 3];, scriptLanguage:groovy, operation:RUNSCRIPTONRESOURCE, options:OperationOptions: {CAUD_TRANSACTION_ID:1659989514919-55e3d75b5a1adc2a72f9-142363/0/5}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@21fa1b88, log:org.identityconnectors.common.logging.Log@3f3e5b1c]
+        ```
+
+        Note that:
+
+        * The `operation` type is "RUNSCRIPTONRESOURCE", which corresponds to the [script on resource operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-script-on-resource.html).
+
+        * The script you provided in "actionSource" is available to `ScriptOnResourceScript.groovy` as the `scriptText` binding.
+
+        * The request data is saved in the `scriptArguments` binding (which is an unmodifiable map).
+
+        * The `scriptText` content is for a Groovy environment, as indicated in the `scriptLanguage` binding.
+
+        Note also that, this particular `ScriptOnResourceScript.groovy` does not return anything; and thus, in the browser response you will see no results:
+
+        `Browser Network Response`
+
+        ```json
+        {
+            "actions": [
+                {
+                    "result": null
+                }
+            ]
+        }
+        ```
+
+        The script you see in the `scriptText` variable is NOT executed automatically by RCS. `ScriptOnResourceScript.groovy` can ignore this binding or use its text value in any desirable way. For example, it could evaluate it as a script, and return its result:
+
+        `ScriptOnResourceScript.groovy`
+
+        ```groovy
+        [ . . . ]
+
+        new GroovyShell().evaluate(scriptText)
+        ```
+
+        This time, in addition to the (same) bindings printed out from `ScriptOnResourceScript.groovy`, the script provided in "actionSource" will execute as well and log out its available variables:
+
+        `RCS logs`
+
+        ```
+        [rcs] ScriptOnResourceScript.groovy bindings: [scriptArguments:[arg1:value1], scriptText:println 'actionSource bindings: '; println binding.variables; [1, 2, 3];, scriptLanguage:groovy, operation:RUNSCRIPTONRESOURCE, options:OperationOptions: {CAUD_TRANSACTION_ID:1661542196240-3c9381d89956a1ca3441-148731/0/4}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@308df108, log:org.identityconnectors.common.logging.Log@12972750]
+
+        [ . . . ]
+
+        [rcs] actionSource bindings:
+        [rcs] [:]
+        ```
+
+        The empty map representing "actionSource" bindings means that no outside-defined variable bindings have been made available to the "actionSource" script. This is because no arguments were passed to the [groovy.lang.GroovyShell](https://docs.groovy-lang.org/latest/html/api/groovy/lang/GroovyShell.html) constructor, which created the instance that evaluated the "actionSource" script content.
+
+        You can supply the "actionSource" script with the very same bindings defined for `ScriptOnResourceScript.groovy` by passing them in the `groovy.lang.GroovyShell` constructor:
+
+        `ScriptOnResourceScript.groovy`
+
+        ```groovy
+        [ . . . ]
+
+        new GroovyShell(binding).evaluate(scriptText)
+        ```
+
+        `RCS logs`
+
+        ```
+        [rcs] ScriptOnResourceScript.groovy bindings: [scriptArguments:[arg1:value1], scriptText:println 'actionSource bindings: '; println binding.variables; [1, 2, 3];, scriptLanguage:groovy, operation:RUNSCRIPTONRESOURCE, options:OperationOptions: {CAUD_TRANSACTION_ID:1661543987519-3c9381d89956a1ca3441-151976/0/5}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@7a551e98, log:org.identityconnectors.common.logging.Log@26179ea7]
+
+        [ . . . ]
+
+        [rcs] actionSource bindings:
+        [rcs] [scriptArguments:[arg1:value1], scriptText:println 'actionSource bindings: '; println binding.variables; [1, 2, 3];, scriptLanguage:groovy, operation:RUNSCRIPTONRESOURCE, options:OperationOptions: {CAUD_TRANSACTION_ID:1661543987519-3c9381d89956a1ca3441-151976/0/5}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@7a551e98, log:org.identityconnectors.common.logging.Log@26179ea7]
+        ```
+
+        Alternatively, you could explicitly provide "actionSource"-specific bindings:
+
+        `ScriptOnResourceScript.groovy`
+
+        ```groovy
+        [ . . . ]
+
+        // Do some processing.
+        def result = 1 + 1;
+
+        Binding binding = new Binding();
+        binding.setVariable('args', scriptArguments)
+        binding.setVariable('result', result)
+
+        new GroovyShell(binding).evaluate(scriptText)
+        ```
+
+        Now, the action script bindings will be limited to the variables explicitly set in `ScriptOnResourceScript.groovy`:
+
+        `RCS logs`
+
+        ```
+        [rcs] ScriptOnResourceScript.groovy bindings: [scriptArguments:[arg1:value1], scriptText:println 'actionSource bindings: '; println binding.variables; [1, 2, 3];, scriptLanguage:groovy, operation:RUNSCRIPTONRESOURCE, options:OperationOptions: {CAUD_TRANSACTION_ID:1661545941051-690832f475140dd87466-16728/0/4}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@308df108, log:org.identityconnectors.common.logging.Log@12972750]
+
+        [ . . . ]
+
+        [rcs] actionSource bindings:
+        [rcs] [args:[arg1:value1], result:2]
+        ```
+
+        In the last few examples, `ScriptOnResourceScript.groovy` ends with the `GroovyShell` call; and thus, the browser response will contain the results of evaluating the "actionSource" script:
+
+        `Browser Network Response`
+
+        ```json
+        {
+            "actions": [
+                {
+                    "result": [
+                        1,
+                        2,
+                        3
+                    ]
+                }
+            ]
+        }
+        ```
+
+        You can customize the script "on resource" behavior in the following ways:
+
+        * With the additional parameters (passed in the request body) available to the script as the `scriptArguments` binding.
+
+        * Via the "actionSource" content (and/or in a self-managed environment, via the "actionFile" reference) for each defined and performed action in a system action.
+
+        The script content in the latter case could be any text. It could be evaluated by the script "on resource", or used in a conditional statement, or applied in any other similar way. It could also be a reference to a local (to RCS) and completely separate script file.
+
+        For example, let's add the following system action with the "script-2" ID to the connector configuration:
+
+        `provisioner.openicf-<connector-name>.json`
+        ```json
+        {
+            "connectorRef": {
+                "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
+                [ . . . ]
+            },
+            "configurationProperties": {
+                "scriptExtensions": [
+                    "groovy"
+                ],
+                "scriptRoots": [
+                    "/opt/openicf/scripts/<connector-name>"
+                ],
+                "scriptOnResourceScriptFileName": "ScriptOnResourceScript.groovy",
+                [ . . . ]
+            },
+            [ . . . ]
+            "systemActions": [
+                {
+                    "scriptId" : "script-1",
+                    "actions" : [
+                        {
+                            "systemType" : ".*ScriptedConnector",
+                            "actionType" : "groovy",
+                            "actionSource" : "println 'actionSource bindings: '; println binding.variables; [1, 2, 3];"
+                        }
+                    ]
+                },
+                {
+                    "scriptId" : "script-2",
+                    "actions" : [
+                        {
+                            "systemType" : ".*ScriptedConnector",
+                            "actionType" : "groovy",
+                            "actionSource" : "/opt/openicf/scripts/groovy/ScriptOnResourceScript.script-2.action-0.groovy"
+                        },
+                        {
+                            "systemType" : ".*ScriptedConnector",
+                            "actionType" : "groovy",
+                            "actionSource" : "/opt/openicf/scripts/groovy/ScriptOnResourceScript.script-2.action-1.groovy"
+                        }
+                    ]
+                },
+                [ . . . ]
+            ]
+        }
+        ```
+
+        The system action defined under the "script-2" ID has two actions, each containing a path to a local file in its "actionSource".
+
+        Each of the referenced files will have a very simple Groovy script returning an object—a list and a map respectively:
+
+        `ScriptOnResourceScript.script-2.action-0.groovy`
+
+        ```groovy
+        [1, 2]
+        ```
+
+        `ScriptOnResourceScript.script-2.action-1.groovy`
+
+        ```groovy
+        [ a: 'a', b: 'b']
+        ```
+
+        Now, the `ScriptOnResourceScript.groovy` script can evaluate the content of each action file—_one_ action at the time:
+
+        `ScriptOnResourceScript.groovy`
+
+        ```groovy
+        [ . . . ]
+
+        try {
+            def scriptFileText = new File(scriptText).text
+            new GroovyShell().evaluate(scriptFileText)
+        } catch (e) {
+            log.error e.message
+        }
+        ```
+
+        Change your browser console JavaScript to request the system action identified as "script-2":
+
+        `IDM Admin Browser Console`
+
+        ```javascript
+        (async function () {
+            var data = await $.ajax('/openidm/system/groovy?_action=script&scriptId=script-2&scriptExecuteMode=resource', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify({
+                    arg1: 'value1'
+                })
+            }).then((data) => {
+                return data;
+            });
+
+            console.log(JSON.stringify(data, null, 4));
+        }());
+        ```
+
+        In the response, you should now see the data returned for each action:
+
+        ```json
+        {
+            "actions": [
+                {
+                    "result": [
+                        1,
+                        2
+                    ]
+                },
+                {
+                    "result": {
+                        "a": "a",
+                        "b": "b"
+                    }
+                }
+            ]
+        }
+        ```
+
+        In this way, "actionSource" could be a great tool for referencing local scripts that you can maintain as separate files under your RCS installation.
+
+        > Note that in such case, the content of "actionSource" is NOT a script. If you attempt to evaluate it directly, you will get an error.
+        >
+        > For example, if you try to request the very same system action to "run on connector" (notice no `&scriptExecuteMode=resource` parameter):
+        >
+        > `IDM Admin Browser Console`
+        >
+        > ```javascript
+        > (async function () {
+        >     var data = await $.ajax('/openidm/system/groovy?_action=script&scriptId=script-2', {
+        >         method: 'POST',
+        >         headers: {
+        >             'Content-Type': 'application/json'
+        >         },
+        >         data: JSON.stringify({
+        >             arg1: 'value1'
+        >         })
+        >     }).then((data) => {
+        >         return data;
+        >     });
+        >
+        >     console.log(JSON.stringify(data, null, 4));
+        > }());
+        > ```
+        >
+        > RCS will try to evaluate the "actionSource" content as a script, and you will see the following errors reported in the browser response:
+        >
+        > ```json
+        > {
+        >     "actions": [
+        >         {
+        >             "error": "No such property: openicf for class: Script1661393119839"
+        >         },
+        >         {
+        >             "error": "No such property: openicf for class: Script1661393119971"
+        >         }
+        >     ]
+        > }
+        > ```
+
+#####  <a id="developing-connector-configuration-system-actions-rest-execute-modes" name="developing-connector-configuration-system-actions-rest-execute-modes"></a>Connector Configuration > "systemActions" > Invoking via REST > "run on resource" vs "run on connector"
+
+[Back to Contents](#contents)
+
+Whether the script you send to RCS is run "on connector" or "on resource", it is executed in the connector environment, on the connector server, where the connector package is deployed.
+
+But the way your script content is used is different:
+
+* For a "run on connector" operation, the ICF framework executes the provided script, and the script has direct access to the connector type-specific context.
+
+* For a "run on resource" operation, the "actionFile" or "actionSource" script content is given as the `scriptText` variable to a script already hosted on RCS. The hosted-on-RCS script will be executed by ICF, and will perform its actions in the connector context. Optionally, the hosted script could evaluate the provided script text, or use it in any other way, or simply ignore the `scriptText` binding.
+
+In a managed environment such as the Identity Cloud, you cannot host a custom script file and reference it in "actionFile". Your system action-specific script content is limited to "actionSource". Arguably, in this case, a more practical approach to perform a custom system action of any considerable complexity is executing a "run on resource" script, which will enable you to maintain it in a separate file.
+
+The "run on resource" script execution mode could also be more efficient than the "run on connector" one because:
+
+* The hosted script is loaded, compiled, and cached once, when the connector is activated, while the "actionSource" or "actionFile" script is evaluated every time a "run on connector" action is called.
+
+* The hosted script doesn't have to be transmitted from IDM to RCS, while the "actionSource" or "actionFile" content does.
+
+####  <a id="developing-connector-configuration-system-actions-idm-script" name="developing-connector-configuration-system-actions-idm-script"></a>Connector Configuration > "systemActions" > Invoking from IDM Script
+
+[Back to Contents](#contents)
+
+You can invoke a system action from an [IDM script](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) by calling `openidm.action(resource, actionName, content, params, fields)` for `Actions supported on system resources (system/*)`.
+
+#####  <a id="developing-connector-configuration-system-actions-idm-script-syntax" name="developing-connector-configuration-system-actions-idm-script-syntax"></a>Connector Configuration > "systemActions" > Invoking from IDM Script > Syntax
+
+[Back to Contents](#contents)
+
+Except for the actual syntax, all the information used for invoking a system action via IDM's REST applies here. The `openidm.action(resource, actionName, content, params, fields)` arguments map to the parts of a system action REST request in the following way:
+
+* `resource` corresponds to the [/openidm/system/\<connector-name\>](#developing-connector-configuration-system-actions-rest-parts-path) part of the path.
+
+* `actionName` corresponds to the [_action=script](#developing-connector-configuration-system-actions-rest-parts-action) ("execute script" action) URL parameter and is always populated with 'script'.
+
+* `content` is an object that in the REST request is described in the [request body](#developing-connector-configuration-system-actions-rest-parts-request-body) JSON.
+
+* `params` is an object containing additional parameters, like [scriptId=\<script_id\>](#developing-connector-configuration-system-actions-rest-parts-script-id) and [scriptExecuteMode=resource](#developing-connector-configuration-system-actions-rest-parts-execute-mode), presented in the query string of the REST request.
+
+* `fields` can be omitted.
+
+#####  <a id="developing-connector-configuration-system-actions-idm-script-examples" name="developing-connector-configuration-system-actions-idm-script-examples"></a>Connector Configuration > "systemActions" > Invoking from IDM Script > Examples
+
+[Back to Contents](#contents)
+
+For comparison, let's assume the same connector configuration as in the preceding REST examples:
+
+`provisioner.openicf-<connector-name>.json`
+```json
+{
+    "connectorRef": {
+        "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
+        [ . . . ]
+    },
+    [ . . . ]
+    "configurationProperties": {
+        [ . . . ]
+        "scriptExtensions": [
+            "groovy"
+        ],
+        "scriptRoots": [
+            "/opt/openicf/scripts/<connector-name>"
+        ],
+        "scriptOnResourceScriptFileName": "ScriptOnResourceScript.groovy",
+        [ . . . ]
+    },
+    [ . . . ]
+    "systemActions": [
+        {
+            "scriptId" : "script-1",
+            "actions" : [
+                {
+                    "systemType" : ".*ScriptedConnector",
+                    "actionType" : "groovy",
+                    "actionSource" : "println 'actionSource bindings: '; println binding.variables; [1, 2, 3];"
+                }
+            ]
+        },
+        [ . . . ]
+    ]
+}
+```
+
+Then:
+
+* <a id="developing-connector-configuration-system-actions-idm-script-examples-on-connector" name="developing-connector-configuration-system-actions-idm-script-examples-on-connector"></a>"run on connector"
+
+    [Back to Contents](#contents)
+
+    A _"run on connector"_ script call in an IDM script could look like the following:
+
+    `IDM Admin > Managed object > alpha_user > onRead Inline Script (text/javascript)`
+
+    ```javascript
+    try {
+        const response = openidm.action(
+            'system/groovy',
+            'script',
+            {
+                arg1: 'value1'
+            },
+            {
+                scriptId: 'script-1'
+            }
+        );
+
+        logger.error(String(response));
+    } catch (e) {
+        logger.error(e.message);
+    }
+    ```
+
+    In IDM logs, you will see the IDM script's output from the `logger.error(String(response));` statement; the logs will contain the JSON returned by the system action:
+
+    `IDM logs`
+
+    ```
+    "SEVERE: { \"actions\": [ { \"result\": [ 1, 2, 3 ] } ] }"
+    ```
+
+    In RCS logs you will see the bindings available for the "run on connector" script:
+
+    `RCS logs`
+
+    ```
+    [rcs] actionSource bindings:
+    [rcs] [arg1:value1, operation:RUNSCRIPTONCONNECTOR, options:OperationOptions: {CAUD_TRANSACTION_ID:1660248281913-d3e36ed8cab1c078539d-31401/0/5}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@28200dd8, log:org.identityconnectors.common.logging.Log@4d49370f]
+    ```
+
+* <a id="developing-connector-configuration-system-actions-idm-script-examples-on-resource" name="developing-connector-configuration-system-actions-idm-script-examples-on-resource"></a>"run on resource"
+
+    [Back to Contents](#contents)
+
+    A call to "run script on resource" could look like the following in an IDM script:
+
+    `IDM Admin > Managed object > alpha_user > onRead Inline Script (text/javascript)`
+    ```javascript
+    try {
+        const response = openidm.action(
+            'system/groovy',
+            'script',
+            {
+                arg1: 'value1'
+            },
+            {
+                scriptId: 'script-1',
+                scriptExecuteMode: 'resource'
+            }
+        );
+
+        logger.error(String(response));
+    } catch (e) {
+        logger.error(e.message);
+    }
+    ```
+
+    Note the additional `scriptExecuteMode: 'resource'` parameter.
+
+    Let's assume the following "script on resource" content:
+
+    `ScriptOnResourceScript.groovy`
+
+    ```groovy
+    [ . . . ]
+
+    Binding binding = new Binding();
+    binding.setVariable('args', scriptArguments)
+
+    new GroovyShell(binding).evaluate(scriptText)
+    ```
+
+    In the IDM logs, you will still see JSON returned from the system action (to the IDM script):
+
+    `IDM logs`
+
+    ```
+    "SEVERE: { \"actions\": [ { \"result\": [ 1, 2, 3 ] } ] }"
+    ```
+
+    The RCS logs, however, will now include output of the bindings available for both scripts, the hosted on RCS `ScriptOnResourceScript.groovy` and the script sent to RCS in "actionSource", as both are going to be executed:
+
+    `RCS logs`
+
+    ```
+    [rcs] ScriptOnResourceScript.groovy bindings: [scriptArguments:[arg1:value1], scriptText:println 'actionSource bindings: '; println binding.variables; [1, 2, 3];, scriptLanguage:groovy, operation:RUNSCRIPTONRESOURCE, options:OperationOptions: {CAUD_TRANSACTION_ID:1660248944505-d3e36ed8cab1c078539d-32885/0/5}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@4ebedbe8, log:org.identityconnectors.common.logging.Log@4f41fd7e]
+
+    [ . . . ]
+
+    [rcs] actionSource bindings:
+    [rcs] [args:[arg1:value1]]
+    ```
+
+    Once again, all considerations you might have for invoking a system action with a REST call, except the actual syntax, apply to invoking a system action from an IDM script.
+
+### <a id="developing-connector-configuration-system-actions-support" name="developing-connector-configuration-system-actions-support"></a>Connector Configuration > "systemActions" > Support in Connectors
+
+[Back to Contents](#contents)
+
+The "systemAction" key and its content are only accepted and supported by connectors that implement [Script on connector operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-script-on-connector.html) and [Script on resource operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-script-on-resource.html).
+
+At the time of writing, the following (Java) connectors have implemented both:
+
+* [Kerberos](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/kerberos.html)
+
+* [Marketo](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/marketo.html)
+
+* [MongoDB](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/mongodb.html)
+
+* [Groovy Connector Toolkit](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/groovy.html)
+
+* [Scripted REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/scripted-rest.html)
+
+* [Scripted SQL](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/scripted-sql.html)
+
+* [SSH](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/ssh.html)
+
+In addition, the [Salesforce](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/salesforce.html) connector has only "script on connector operation" implemented.
+
+> Although unrelated to Java RCS, [Scripted connectors with PowerShell](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/powershell.html) support "script on connector operation" as well.
 
 ## <a id="example-connectors" name="example-connectors"></a>Example Connectors
 
