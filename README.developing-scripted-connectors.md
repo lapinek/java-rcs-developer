@@ -9,6 +9,7 @@
     * [Attaching Debugger to Kubernetes Deployment](#developing-debugging-scripts-debugger)
 * [Connector Configuration](#developing-connector-configuration)
     * ["configurationProperties"](#developing-connector-configuration-configuration-properties)
+        * ["customConfiguration" and "customSensitiveConfiguration"](#developing-connector-configuration-configuration-properties-custom-configuration)
 * [Example Connectors](#example-connectors)
     * [Scripted SQL Connector](#example-connectors-scripted-sql)
 
@@ -465,6 +466,177 @@ This section will elaborate on some additional details, not currently presented 
 [Back to Contents](#contents)
 
 The "configurationProperties" key in connector configuration contains settings that are specific to the target system.
+
+####  <a id="developing-connector-configuration-configuration-properties-custom-configuration" name="developing-connector-configuration-configuration-properties-custom-configuration"></a>Connector Configuration > "configurationProperties" > "customConfiguration" and "customSensitiveConfiguration"
+
+[Back to Contents](#contents)
+
+The docs provide an [example of using customConfiguration and customSensitiveConfiguration](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/kerberos.html#ssh-kerberos-config):
+
+```json
+"customConfiguration" : "kadmin { cmd = '/usr/sbin/kadmin.local'; user = 'openidm/admin'; default_realm = 'EXAMPLE.COM' }",
+"customSensitiveConfiguration" : "kadmin { password = 'Passw0rd' }",
+```
+
+The variables set in `custom(Sensitive)Configuration` will become configuration properties in the script.
+
+It might not be entirely clear, though, how (and why) this Groovy-like syntax works, and how custom configuration options set this way could be used in a script.
+
+The content provided in "customConfiguration" will be evaluated with [a matching parse method of the groovy.util.ConfigSlurper class](https://docs.groovy-lang.org/latest/html/gapi/groovy/util/ConfigSlurper.html#method_summary).
+
+> For reference: [OpenICF > connectors > [ . . . ] > ScriptedConfiguration.java](https://stash.forgerock.org/projects/OPENICF/repos/connectors/browse/groovy-common/src/main/java/org/forgerock/openicf/connectors/groovy/ScriptedConfiguration.java#563-569,576-584).
+
+In particular, the [parse(String script)](https://docs.groovy-lang.org/latest/html/gapi/groovy/util/ConfigSlurper.html#parse(java.lang.String)) method accepts a special script that will set variables using variable assignment or a [Closure](https://groovy-lang.org/closures.html) syntax:
+
+* Assigning variables:
+
+    ```json
+    "customConfiguration": "key1 = 'value1';"
+    ```
+
+* Defining closures:
+
+    ```json
+    "customConfiguration": "key1 { key2 = 'value2'; };"
+    ```
+
+If you use a closure for setting "customConfiguration", the word preceding the closure becomes a property that contains a map with keys set by the closure code. Using closure syntax may reduce the redundant clutter if a map is referenced multiple times. It will also allow for some processing before a variable is assigned. But you can use variable assignment or dot notation for creating a map as well.
+
+For example, you could have the following configuration for your connector:
+
+`provisioner.openicf-<connector-name>.json`
+
+```json
+{
+    "connectorRef": {
+        "connectorHostRef": "rcs",
+        "bundleVersion": "1.5.20.6-SNAPSHOT",
+        "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
+        "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
+    },
+    "configurationProperties": {
+        "customConfiguration": "key1 = 'value1'; key2 = 'value2'; map1 { key1 = 'value3'; key2 = 'value4'; }; map2.key1 = 'value5'; map2.key2 = 'value6'; map3 = [ key1: 'value7', key2: 'value8' ];",
+        [ . . . ]
+    }
+    [ . . . ]
+}
+```
+
+Note that multi-line statements are not supported in JSON. This means, you must put all "customConfiguration" in one line, and separate multiple Groovy statements with semicolons.
+
+> You _could_ use new lines for separating Groovy statements as well:
+>
+> ```json
+> [ . . . ]
+> "customConfiguration": "key1 = 'value1'\n key2 = 'value2'\n map1 { key1 = 'value3'\n key2 = 'value4'\n }\n map2.key1 = 'value5'\n map2.key2 = 'value6'\n map3 = [ key1: 'value7', key2: 'value8' ]\n",
+> [ . . . ]
+>```
+
+The parsed configuration will be used to populate the scripts' `configuration.propertyBag` binding.
+
+For example, with the aforementioned connector configuration in place, the output of `propertyBag` properties could look like the following:
+
+`TestScript.groovy`
+```groovy
+    println configuration.propertyBag.key1
+    println configuration.propertyBag.key2
+    println configuration.propertyBag.map1.key1
+    println configuration.propertyBag.map1.key2
+    println configuration.propertyBag.map2.key1
+    println configuration.propertyBag.map2.key2
+    println configuration.propertyBag.map3.key1
+    println configuration.propertyBag.map3.key2
+```
+
+`RCS logs`
+
+```
+[rcs] value1
+[rcs] value2
+[rcs] value3
+[rcs] value4
+[rcs] value5
+[rcs] value6
+[rcs] value7
+[rcs] value8
+```
+
+If you don't want your connector configuration to be exposed in clear text in IDM, you can also supply the `propertyBag` content via the connector's "customSensitiveConfiguration" configuration property. The information defined with the "customSensitiveConfiguration" key will be encrypted on IDM side; its content will become a [GuardedString](https://docs.oracle.com/en/middleware/idm/identity-governance/12.2.1.3/omicf/index.html?org/identityconnectors/common/security/GuardedString.html) (that is, encrypted string), and it will continue to be encrypted in transport to the RCS.
+
+The properties defined in "customSensitiveConfiguration" will overwrite the same keys provided in "customConfiguration".
+
+For example:
+
+`provisioner.openicf-<connector-name>.json`
+
+```json
+{
+    [ . . . ]
+    "configurationProperties": {
+        "customConfiguration": "key1 = 'value1'; key2 = 'value2'; map1 { key1 = 'value3'; key2 = 'value4'; }; map2.key1 = 'value5'; map2.key2 = 'value6'; map3 = [ key1: 'value7', key2: 'value8' ];",
+        "customSensitiveConfiguration": "key1 = 'sensitive-value1'; map1 { key1 = 'sensitive-value3'; }; map2.key1 = 'sensitive-value5'; map3 = [ key1: 'sensitive-value7' ];",
+        [ . . . ]
+    }
+    [ . . . ]
+}
+```
+
+`TestScript.groovy`
+```groovy
+    println configuration.propertyBag.key1
+    println configuration.propertyBag.key2
+    println configuration.propertyBag.map1.key1
+    println configuration.propertyBag.map1.key2
+    println configuration.propertyBag.map2.key1
+    println configuration.propertyBag.map2.key2
+    println configuration.propertyBag.map3.key1
+    println configuration.propertyBag.map3.key2
+```
+
+`RCS logs`
+
+```
+[rcs] sensitive-value1
+[rcs] value2
+[rcs] sensitive-value3
+[rcs] value4
+[rcs] sensitive-value5
+[rcs] value6
+[rcs] sensitive-value7
+[rcs] value8
+```
+
+As with many things processed on IDM side, you can use [property value substitution](https://backstage.forgerock.com/docs/idm/7.2/setup-guide/using-property-substitution.html) in the "custom(Sensitive)Configuration" values. In addition to the IDM variables, in Identity Cloud, you can reference [Environment-Specific Variables and Secrets (ESVs)](https://qa.forgerock.com/docs/docs-pr/idcloud/antora/594/idcloud/latest/tenants/esvs.html) in a connector configuration.
+
+For example:
+
+`provisioner.openicf-<connector-name>.json`
+
+```json
+{
+    [ . . . ]
+    "configurationProperties": {
+        "customConfiguration": "oauth2 { provider = 'https://&{fqdn}/'; client_id = 'client-id' }",
+        "customSensitiveConfiguration": "oauth2 { client_secret = '&{esv.my.secret}' }",
+        [ . . . ]
+    }
+    [ . . . ]
+}
+```
+
+`TestScript.groovy`
+
+```groovy
+println configuration.propertyBag
+```
+
+`RCS logs`
+
+```
+[rcs] [oauth2:[client_secret:esv-my-secret  value, provider:https://openam-dx-kl02.forgeblocks.com/, client_id:client-id]]
+```
+
+> Unfortunately, [one has to be told what _IDM_ variables are](https://backstage.forgerock.com/docs/idm/7.2/setup-guide/using-property-substitution.html#expression-evaluation) in Identity Cloud. You cannot see it for yourself.
 
 ## <a id="example-connectors" name="example-connectors"></a>Example Connectors
 
