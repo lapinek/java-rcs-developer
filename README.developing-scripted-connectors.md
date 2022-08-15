@@ -18,11 +18,13 @@
 
 [Back to Contents](#contents)
 
-Consult the [IDE integration](https://groovy-lang.org/ides.html) support for Groovy Language.
+For a Java RCS, you will write scripts in [the Apache Groovy programming language](https://groovy-lang.org/) (Groovy). Consult the [IDE integration](https://groovy-lang.org/ides.html) support for Groovy when you choose your IDE for RCS script development.
 
 In general, you can get a better support for Groovy in a Java-specialized IDE, like [IntelliJ IDEA](https://www.jetbrains.com/idea/) (IntelliJ).
 
-In a non-Java or polyglottal IDE, you will be able to maintain your RCS scripts, but Groovy support might not be provided or come from extensions maintained by individuals. For example, as of this writing, Visual Code Studio, a very popular code editor, has no available Groovy debugger extension. This means that, if you need to attach a debugger to your RCS process, you'd have to go with something like IntelliJ.
+In a non-Java or in a polyglottal IDE, you might be able to effectively maintain your RCS scripts, but Groovy support may not be provided or be limited in comparison to IntelliJ.
+
+> For example, as of this writing, no Groovy debugger extension is available for Visual Code Studio—a very popular code editor. This means that, if you want to do remote debugging and attach a debugger to your RCS process, you will have to use something like IntelliJ.
 
 ## <a id="developing-debugging-scripts" name="developing-debugging-scripts"></a>Debugging Scripts
 
@@ -47,7 +49,8 @@ log.info 'This is ' + operation + ' script'
 [rcs] Jul 20, 2022 12:41:12 AM INFO  TestScript: This is TEST script
 ```
 
-> Converting object to a string will allow `log` to output an object without referencing individual properties or keys. Otherwise, you might get a wordy error instead:
+> Using methods `Log` to output an object information without referencing its individual properties or keys might require converting the object to a strings. Otherwise, you could get a wordy error in the output:
+>
 > ```groovy
 > log.info operation
 > ```
@@ -56,19 +59,20 @@ log.info 'This is ' + operation + ' script'
 > groovy.lang.MissingMethodException: No signature of method: org.identityconnectors.common.logging.Log.info() is applicable for argument types: (org.forgerock.openicf.connectors.groovy.OperationType) values: [TEST]
 > ```
 
-Use the Log class for debug messages to stay in the code.
+Use the `Log` class for the logs output that is to stay in the code.
 
-During the development phase, for temporary output, you could use the standard `println`:
+During the development phase, for a quick temporary output, you could use the standard `println`. This will allow to print out content of objects and strings without the additional information about date and time and log level, which might not bear a lot of value during script development:
 
 ```groovy
 println operation
 ```
 
-This will allow to print out content of objects and strings without the additional information that might add little value during script development:
 
 ```
 [rcs] TEST
 ```
+
+Also, you don't have to convert your object to a string explicitly before sending it to `println` because the latter will utilize `toString()` method available in all Java objects.
 
 ### <a id="developing-debugging-scripts-try-catch" name="developing-debugging-scripts-try-catch"></a>Debugging Scripts > Try and Catch
 
@@ -98,20 +102,18 @@ try {
 }
 ```
 
-> [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/UnsupportedOperationException.html) is a Java exception, which, among with other most commonly used classes, is [automatically provided in Groovy scripts](https://groovy-lang.org/structure.html#_default_imports).
+> [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/UnsupportedOperationException.html) is a Java exception, which, among other most commonly used Java classes, is [automatically provided in Groovy scripts](https://groovy-lang.org/structure.html#_default_imports).
 
-Script error Handled in this way will result in a message displayed on the connector data page in IDM Admin:
+A script error handled in this way will result in a message displayed on the connector data page in IDM Admin:
 
 <img alt="Error Message in IDM Admin Connector Screen, which reads—SEARCH operation of type: organization is not supported." src="README_files/rcs.connector.search-script.handled-exception.png" width="1024">
 
-Passing script identifiers and the exception information to the `log` object methods could provide helpful content for debugging the issue; for example:
+Passing the exception information and/or some custom messages to the logs output could provide helpful content for debugging. For example:
 
 ```bash
 [rcs] Jun 22, 2022 2:35:11 AM ERROR SearchScript: SEARCH operation of type: organization is not supported.
 [rcs] Jun 22, 2022 2:35:11 AM ERROR SearchScript: Exception: ERROR: relation "organisations" does not exist%0A  Position: 15.
 ```
-
-> Employing the `try/catch` technique is not Skaffold-specific and outlined here for completeness.
 
 ### <a id="developing-debugging-scripts-debugger" name="developing-debugging-scripts-debugger"></a>Debugging Scripts > Attaching a Debugger
 
