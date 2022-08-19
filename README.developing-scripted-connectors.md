@@ -17,11 +17,11 @@
 
 [Back to Contents](#contents)
 
-For a Java RCS, you will write scripts in [the Apache Groovy programming language](https://groovy-lang.org/) (Groovy). Consult the [IDE integration](https://groovy-lang.org/ides.html) support for Groovy when you choose your IDE for RCS script development.
+For a Java RCS, you will write scripts in [the Apache Groovy programming language](https://groovy-lang.org/) (Groovy). Consult the [IDE integration support for Groovy](https://groovy-lang.org/ides.html) when you choose your IDE for RCS script development.
 
 In general, you can get a better support for Groovy in a Java-specialized IDE, like [IntelliJ IDEA](https://www.jetbrains.com/idea/) (IntelliJ).
 
-In a non-Java or in a polyglottal IDE, you might be able to effectively maintain your RCS scripts, but Groovy support may not be provided or be limited in comparison to IntelliJ.
+In a non-Java or in a polyglottal IDE, you might be able to effectively maintain your RCS scripts, but Groovy-related features may not be readily available or have limited functionality and support (in comparison to IntelliJ).
 
 > For example, as of this writing, no Groovy debugger extension is available for Visual Code Studio—a very popular code editor. This means that, if you want to do remote debugging and attach a debugger to your RCS process, you will have to use something like IntelliJ.
 
@@ -48,7 +48,7 @@ log.info 'This is ' + operation + ' script'
 [rcs] Jul 20, 2022 12:41:12 AM INFO  TestScript: This is TEST script
 ```
 
-> Using methods `Log` to output an object information without referencing its individual properties or keys might require converting the object to a strings. Otherwise, you could get a wordy error in the output:
+> Using `Log` to output an object information without referencing its individual properties might require converting the object to a string; otherwise, you could get a wordy error in the output. For example:
 >
 > ```groovy
 > log.info operation
@@ -58,9 +58,11 @@ log.info 'This is ' + operation + ' script'
 > groovy.lang.MissingMethodException: No signature of method: org.identityconnectors.common.logging.Log.info() is applicable for argument types: (org.forgerock.openicf.connectors.groovy.OperationType) values: [TEST]
 > ```
 
-Use the `Log` class for the logs output that is to stay in the code.
+Use the `Log` class for debugging output that is to stay in the code and to be used in test and production.
 
-During the development phase, for a quick temporary output, you could use the standard `println`. This will allow to print out content of objects and strings without the additional information about date and time and log level, which might not bear a lot of value during script development:
+During the development phase, however, for a quick temporary output, you could use the [println](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/PrintStream.html) method. This will allow to print out content of different types of variables without the additional information about date, time, and log level; which might not bear a lot of value during script development.
+
+For example:
 
 ```groovy
 println operation
@@ -71,13 +73,17 @@ println operation
 [rcs] TEST
 ```
 
-Also, you don't have to convert your object to a string explicitly before sending it to `println` because the latter will utilize `toString()` method available in all Java objects.
+You don't have to convert your object to a string explicitly before sending it to `println` because the latter will utilize `toString()` method available in all Java objects.
+
+> Much of Java functionality is [imported in Groovy by default](https://groovy-lang.org/structure.html#_default_imports). Hence, you don't need to reference the `println` method with the full `System.out.println` statement, which comes from the `java.lang.*` package.
 
 ### <a id="developing-debugging-scripts-try-catch" name="developing-debugging-scripts-try-catch"></a>Debugging Scripts > Try and Catch
 
 [Back to Contents](#contents)
 
-Generally, you should wrap your code with a `try/catch` block, and observe custom error messages in the logs output. For example:
+Generally, you should wrap your code with a `try/catch` block, and observe custom error messages in the logs output.
+
+For example (where `[ . . . ]` denotes an omission from the original source):
 
 ```groovy
 import org.identityconnectors.common.logging.Log
@@ -118,31 +124,34 @@ Passing the exception information and/or some custom messages to the logs output
 
 [Back to Contents](#contents)
 
-The bindings in a connector script will depend on the connector and script types. There are, however, some common properties available in any connector script that are worth of mentioning.
+The the context provided to a connector script via [bindings](https://docs.groovy-lang.org/latest/html/api/groovy/lang/Binding.html) will depend on the connector type and the script type.
 
-* `configuration.propertyBag`
+Some common properties are available in any connector script, and using them might benefit from providing additional details:
 
-    If you need to keep a global reference accessible in the scripts, you can save it in the `configuration.propertyBag` binding.
+* `configuration`
 
-    For example, you can populate the `propertyBag` property manually in a script. Once set, it can serve as a global variable accessible in the other scripts at runtime. For example:
+    * `configuration.propertyBag`
 
-    ```groovy
-    configuration.propertyBag.myCustomProperties = new LinkedHashMap()
-    configuration.propertyBag.myCustomProperties.add('key': 'value')
-    ```
+        If you need to keep a global reference accessible in the scripts, you can save it in the `configuration.propertyBag` binding.
 
-    You can provide initial content for `propertyBag` in the connector configuration via "configurationProperties.customConfiguration" when you [configure your scripted connector over REST](https://backstage.forgerock.com/docs/idcloud/latest/solution-scripted-rest-connector.html).
+        For example, you can populate the `propertyBag` property manually in a script. Once set, it can serve as a global variable accessible in the other scripts at runtime. For example:
 
-    See the [Connector Configuration > Custom (Sensitive) Configuration](#developing-connector-configuration-custom-configuration) for additional details.
+        ```groovy
+        configuration.propertyBag.myCustomProperties = new LinkedHashMap()
+        configuration.propertyBag.myCustomProperties.add('key': 'value')
+        ```
 
+        You can provide the initial content for `propertyBag` in the connector configuration via the "configurationProperties.customConfiguration" key when you [configure your scripted connector over REST](https://backstage.forgerock.com/docs/idcloud/latest/solution-scripted-rest-connector.html).
+
+        See the [Connector Configuration > "configurationProperties"](#developing-connector-configuration-configuration-properties) section for additional details.
 
 ##  <a id="developing-connector-configuration" name="developing-connector-configuration"></a>Connector Configuration
 
 [Back to Contents](#contents)
 
-The docs provide general steps of [Configuring connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST). Configuration properties for the remote connector types available in Identity Cloud can be found under [Connector reference](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/preface.html) > Remote Connectors.
+The docs outline general steps of [Configuring connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST). Configuration properties for different remote connector types (that are available in Identity Cloud) can be found under [Connector reference](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/preface.html) > Remote Connectors.
 
-In this section, we will go over some connector configuration settings, using of which may benefit from additional details.
+This section will elaborate on some additional details, not currently presented in the docs.
 
 ###  <a id="developing-connector-configuration-configuration-properties" name="developing-connector-configuration-configuration-properties"></a>Connector Configuration > "configurationProperties"
 
