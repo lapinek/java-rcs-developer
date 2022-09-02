@@ -16,6 +16,10 @@ While primary focus and many references in this article are pointed to Identity 
     * [Try and Catch](#developing-debugging-scripts-try-catch)
     * [Custom Logs](#developing-debugging-scripts-custom-logs)
     * [Attaching Debugger to Kubernetes Deployment](#developing-debugging-scripts-debugger)
+* [Scripting Context](#developing-connector-context)
+    * [Bindings](#developing-connector-context-bindings)
+    * [Global Variables](#developing-connector-context-globals)
+* [Scripted Connector Bindings](#developing-connector-bindings)
 * [Connector Configuration](#developing-connector-configuration)
     * ["configurationProperties"](#developing-connector-configuration-configuration-properties)
         * ["customConfiguration" and "customSensitiveConfiguration"](#developing-connector-configuration-configuration-properties-custom-configuration)
@@ -550,6 +554,325 @@ Java RCS deployed in a Docker container will run in a remote Java Virtual Machin
     For additional details, consult the IntelliJ docs on [setting debugging environment](https://www.jetbrains.com/help/idea/creating-and-editing-run-debug-configurations.html) and [debugging](https://www.jetbrains.com/help/idea/debugging-code.html#general-procedure).
 
 This should help understand the process of attaching a debugger to your RCS instance running in a Kubernetes cluster. Change it according to your specific requirements.
+
+##  <a id="developing-connector-context" name="developing-connector-context"></a>Scripting Context
+
+[Back to Contents](#contents)
+
+###  <a id="developing-connector-context-bindings" name="developing-connector-context-bindings"></a>Scripting Context > Bindings
+
+[Back to Contents](#contents)
+
+A [Groovy script](https://docs.groovy-lang.org/latest/html/api/groovy/lang/Script.html) gets its context via [bindings](https://docs.groovy-lang.org/latest/html/api/groovy/lang/Binding.html) defined outside of the script. For connector scripts, the variable bindings are defined according to the registered [connector type](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/preface.html#remote-connectors-desc) (Groovy, Scripted REST, or Scripted SQL for a scripted connector) and the [script operation type](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/groovy-operations.html) exposed as an [ICF interface](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/interfaces.html).
+
+The connector type and the script operation type are derived from the connector configuration received by IDM at the time when the connection is registered, as described in the final step of the [Create a connector configuration over REST](https://backstage.forgerock.com/docs/idcloud/latest/solution-scripted-rest-connector.html) docs.
+
+> Currently, a scripted connection cannot be configured with the IDM admin UI.
+>
+> At the same time, defining and capturing connection details as REST requests in your source code allows to describe your RCS setup in reproducible way and in conjunction with script development efforts and configuration.
+
+The final connection configuration will have reference to the connector type, scripts for different connector operations, and the language in which the scripts are written.
+
+For example:
+
+`provisioner.openicf-<connector-name>.json`
+
+```json
+{
+    "connectorRef": {
+        "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
+        "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
+        [ . . . ]
+    },
+    [ . . . ]
+    "configurationProperties": {
+        "scriptExtensions": [
+            "groovy"
+        ],
+        "scriptRoots": [
+            "/opt/openicf/scripts/groovy"
+        ],
+        "scriptOnResourceScriptFileName":  null,
+        "authenticateScriptFileName":  null,
+        "createScriptFileName":  null,
+        "customizerScriptFileName": null,
+        "deleteScriptFileName":  null,
+        "resolveUsernameScriptFileName":  null,
+        "schemaScriptFileName": "SchemaScript.groovy",
+        "searchScriptFileName": "SearchScript.groovy",
+        "syncScriptFileName":  null,
+        "testScriptFileName": "TestScript.groovy",
+        "updateScriptFileName":  null,
+        "scriptBaseClass": null,
+        "recompileGroovySource": true,
+        [ . . . ]
+    },
+    "systemActions" : [
+        {
+            "scriptId" : "script-1",
+            "actions" : [
+                {
+                    "systemType" : ".*ScriptedConnector",
+                    "actionType" : "groovy",
+                    "actionSource" : "println 'actionSource bindings: '; println binding.variables;"
+                }
+            ]
+        }
+    ],
+    [ . . .]
+}
+```
+
+You can see all variable bindings passed to the script (and thus, defined in the script top-level scope) as shown in the following example:
+
+`TestScript.groovy`
+
+```groovy
+try {
+    println 'Bindings: '
+    println binding.variables
+} catch (e) {
+    println('EXCEPTION: ' + e)
+}
+```
+
+> In Groovy, you can _usually_ `get` and `set` object's (the script instance in this case) property by referencing the property itself, without explicitly calling its [getters and setters](https://groovy-lang.org/style-guide.html#_getters_and_setters). The above code is an equivalent to the following:
+>
+> `TestScript.groovy`
+>
+> ```groovy
+> try {
+>     println 'Bindings: '
+>     println getBinding().getVariables()
+> } catch (e) {
+>     println('EXCEPTION: ' + e)
+> }
+> ```
+>
+>  There are exceptions, though; for example, you cannot use the dot notation to access a [Map](https://groovy-lang.org/syntax.html#_maps) instance _properties_, because the dot operator is used for retrieving map's keys.
+
+To try the above, you can invoke the test script by POSTing a `test` action request to the connector endpoint in IDM's REST: `/openidm/system/<connector-name>?_action=test`.
+
+You will need to authorize the request as an IDM administrator.
+
+> In Identity Cloud, this means providing an OAuth 2.0 bearer token in the Authorization header of your request. The token needs to be obtained with a client mapped to an IDM subject associated with the administrator role.
+>
+> The easiest way of accomplishing this type of authorization is singing in the IDM admin UI, and using the browser console for making a jQuery request. Internally, jQuery uses XMLHttpRequest (XHR), and such requests are automatically authorized by the UI.
+
+For example:
+
+`IDM admin UI browser console`
+
+```javascript
+(async function () {
+    var data = await $.ajax('/openidm/system/groovy?_action=test', {
+        method: 'POST'
+    });
+
+    console.log(JSON.stringify(data, null, 4));
+}());
+```
+
+> The browser response will contain some basic connector information along with the "ok" key; and if the things are not OK, with the the "error" key as well.
+>
+> For example:
+>
+> `IDM admin UI browser console`
+>
+> ```json
+> {
+>     "name": "groovy",
+>     "enabled": true,
+>     "config": "config/provisioner.openicf/groovy",
+>     "connectorRef": {
+>         "connectorHostRef": "rcs",
+>         "bundleVersion": "1.5.20.8-SNAPSHOT",
+>         "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
+>         "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
+>     },
+>     "displayName": "Scripted Groovy Connector",
+>     "objectTypes": [
+>         "__ACCOUNT__",
+>         "__TEST__",
+>         "__ALL__"
+>     ],
+>     "ok": true
+> }
+> ```
+>
+> This content is returned by the [Test operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-test.html). The test script cannot not return anything in the response, but it can throw an exception that will populate the "ok" key with `false` and provide the exception message in the "error" key.
+
+In the RCS logs, you will see the following:
+
+`RCS logs`
+
+```
+[rcs] Bindings:
+[rcs] [operation:TEST, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@3797a24b, log:org.identityconnectors.common.logging.Log@68a6929f]
+```
+
+The script `binding` property is an instance of the [java.util.LinkedHashMap](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/LinkedHashMap.html) class. You can loop over its entries if you want to get information about individual bindings.
+
+For example:
+
+`TestScript.groovy`
+
+```groovy
+try {
+    println 'Bindings:'
+    binding.variables.each { key, value ->
+        def className = value ? value.class.name : ''
+        println 'name: ' + key + ' value: ' + value + ' className: ' + className
+    }
+} catch (e) {
+    println('EXCEPTION: ' + e)
+}
+```
+
+`RCS logs`
+
+```
+[rcs] Bindings:
+[rcs] key: operation value: TEST class: class org.forgerock.openicf.connectors.groovy.OperationType
+[rcs] key: configuration value: org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@28d2149c cl;$^ass: class org.forgerock.openicf.connectors.groovy.ScriptedConfiguration
+[rcs] key: log value: org.identityconnectors.common.logging.Log@2ca03a2a class: class org.identityconnectors.common.logging.Log
+```
+
+An individual binding is accessible in the top-level scope as a variable:
+
+`TestScript.groovy`
+
+```groovy
+try {
+    println 'operation: ' + operation
+} catch (e) {
+    println('EXCEPTION: ' + e)
+}
+```
+
+`RCS logs`
+
+```
+[rcs] operation: TEST
+```
+
+> If you try to reference a variable (binding) that does not exist, you will get a `groovy.lang.MissingPropertyException`.
+>
+> For example:
+>
+> `RCS logs`
+>
+> ```
+> [rcs] EXCEPTION: No such property: myVariable for class: TestScript
+> ```
+
+### <a id="developing-connector-context-globals" name="developing-connector-context-globals"></a>Global Variables
+
+[Back to Contents](#contents)
+
+Bindings, both the `binding` instance and the individual binding properties, behave as global variables. This opens a possibility for reassigning them accidentally and thus breaking something in your code.
+
+To avoid a situation like this in complex and involved scripts, you _could_:
+1. Declare local variables with the same names as bindings. Doing so will prevent accidental reassignment of the corresponding global references.
+2. Then, reference bindings as the script properties, with the `this.` prefix. Using the `this` keyword, which points to the script instance itself, will assure that you are not referencing a local variable.
+
+For example:
+
+`TestScript.groovy`
+
+```groovy
+try {
+    def operation
+    def configuration
+    def log
+
+    configuration = 'string value'
+
+    println 'configuration: ' + configuration // local variable
+    println 'this.configuration: ' + this.configuration // binding, which is a script instance property
+} catch (e) {
+    println('EXCEPTION: ' + e)
+}
+```
+
+`RCS logs`
+
+```
+[rcs] configuration: string value
+[rcs] this.configuration: org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@1fc68d
+```
+
+While the above example illustrates the distinction between local variables and script properties, it introduces potentially unneeded local variables.
+
+Alternatively, you can assign binding values to namesake local variables and reference them without `this` prefix. You can further clarify bindings' designations by referencing their types.
+
+For example:
+
+`TestScript.groovy`
+
+```groovy
+import org.identityconnectors.common.logging.Log
+import org.forgerock.openicf.connectors.groovy.OperationType
+import org.forgerock.openicf.connectors.groovy.ScriptedConfiguration
+
+try {
+    def operation = operation as OperationType
+    def configuration = configuration as ScriptedConfiguration
+    def log = log as Log
+
+    [ . . . ]
+} catch (e) {
+    println('EXCEPTION: ' + e)
+}
+```
+
+Doing so and adding corresponding dependencies to your scripted connector project can enable your IDE to show bindings' class information and provide additional code completion options.
+
+> For example, [in IntelliJ, you can add your dependencies as modules](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html). Even if you don't manage your connector scripts as a Java project, for the `identityconnectors` and `openicf` packages, you could import `java-framework` and `groovy-common` from [OPENICF/connectors](https://stash.forgerock.org/projects/OPENICF/repos/connectors/browse) and thus allow your IDE to show the additional information about your variables.
+
+## <a id="developing-connector-bindings" name="developing-connector-bindings"></a>Scripted Connector Bindings
+
+[Back to Contents](#contents)
+
+In [ICF operations with Groovy scripts](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/scripts/script-authenticate.html), you can find descriptions and examples of use for common and operation-specific input variables (that is, bindings) present in various types of connector scripts.
+
+Some bindings could represent an object with properties not currently outlined in the docs. Below, find additional information about some common properties available in any connector script (irrespective of the connector type and the script designation):
+
+* `configuration`
+
+    * `configuration.propertyBag`
+
+        If you need to keep a global reference accessible in any script, you can save it in the `configuration.propertyBag` binding.
+
+        You could populate the `propertyBag` property manually in a script. Once set, it can serve as a global variable accessible in the other scripts at runtime.
+
+        For example:
+
+        `TestScript.groovy`
+
+        ```groovy
+        configuration.propertyBag.myCustomProperties = [ key: 'value' ]
+
+        [ . . . ]
+        ```
+
+        `SchemaScript.groovy`
+
+        ```groovy
+        println configuration.propertyBag.myCustomProperties.key
+
+        [ . . . ]
+        ```
+
+        `RCS logs`
+
+        ```
+        [rcs] value
+        ```
+
+        You can also provide the initial content for `propertyBag` in the connector configuration via the "configurationProperties.customConfiguration" and "configurationProperties.customSensitiveConfiguration" keys when you [configure your scripted connector over REST](https://backstage.forgerock.com/docs/idcloud/latest/solution-scripted-rest-connector.html).
+
+        See the [Connector Configuration > "configurationProperties" > "customConfiguration" and "customSensitiveConfiguration"](#developing-connector-configuration-configuration-properties-custom-configuration) section for details.
 
 ##  <a id="developing-connector-configuration" name="developing-connector-configuration"></a>Connector Configuration
 
