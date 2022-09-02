@@ -6,10 +6,8 @@
 * [Debugging Scripts](#developing-debugging-scripts)
     * [Custom Logs](#developing-debugging-scripts-custom-logs)
     * [Try and Catch](#developing-debugging-scripts-try-catch)
-* [Scripting Context](#developing-connector-context)
 * [Connector Configuration](#developing-connector-configuration)
     * ["configurationProperties"](#developing-connector-configuration-configuration-properties)
-* [Bindings](#developing-bindings)
 * [Example Connectors](#example-connectors)
     * [Scripted SQL Connector](#example-connectors-scripted-sql)
 
@@ -120,31 +118,6 @@ Passing the exception information and/or some custom messages to the logs output
 [rcs] Jun 22, 2022 2:35:11 AM ERROR SearchScript: Exception: ERROR: relation "organisations" does not exist%0A  Position: 15.
 ```
 
-##  <a id="developing-connector-context" name="developing-connector-context"></a>On Scripting Context
-
-[Back to Contents](#contents)
-
-The the context provided to a connector script via [bindings](https://docs.groovy-lang.org/latest/html/api/groovy/lang/Binding.html) will depend on the connector type and the script type.
-
-Some common properties are available in any connector script, and using them might benefit from providing additional details:
-
-* `configuration`
-
-    * `configuration.propertyBag`
-
-        If you need to keep a global reference accessible in the scripts, you can save it in the `configuration.propertyBag` binding.
-
-        For example, you can populate the `propertyBag` property manually in a script. Once set, it can serve as a global variable accessible in the other scripts at runtime. For example:
-
-        ```groovy
-        configuration.propertyBag.myCustomProperties = new LinkedHashMap()
-        configuration.propertyBag.myCustomProperties.add('key': 'value')
-        ```
-
-        You can provide the initial content for `propertyBag` in the connector configuration via the "configurationProperties.customConfiguration" key when you [configure your scripted connector over REST](https://backstage.forgerock.com/docs/idcloud/latest/solution-scripted-rest-connector.html).
-
-        See the [Connector Configuration > "configurationProperties"](#developing-connector-configuration-configuration-properties) section for additional details.
-
 ##  <a id="developing-connector-configuration" name="developing-connector-configuration"></a>Connector Configuration
 
 [Back to Contents](#contents)
@@ -158,10 +131,6 @@ This section will elaborate on some additional details, not currently presented 
 [Back to Contents](#contents)
 
 The "configurationProperties" key in connector configuration contains settings that are specific to the target system.
-
-## <a id="developing-bindings" name="developing-bindings"></a>Bindings
-
-[Back to Contents](#contents)
 
 ## <a id="example-connectors" name="example-connectors"></a>Example Connectors
 
