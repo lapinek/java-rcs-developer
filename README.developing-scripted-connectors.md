@@ -4,8 +4,6 @@
 
 * [Choosing an IDE](#developing-ide)
 * [Debugging Scripts](#developing-debugging-scripts)
-    * [Custom Logs](#developing-debugging-scripts-custom-logs)
-    * [Try and Catch](#developing-debugging-scripts-try-catch)
 * [Connector Configuration](#developing-connector-configuration)
     * ["configurationProperties"](#developing-connector-configuration-configuration-properties)
 * [Example Connectors](#example-connectors)
@@ -26,97 +24,6 @@ In a non-Java or in a polyglottal IDE, you might be able to effectively maintain
 ## <a id="developing-debugging-scripts" name="developing-debugging-scripts"></a>Debugging Scripts
 
 [Back to Contents](#contents)
-
-### <a id="developing-debugging-scripts-custom-logs" name="developing-debugging-scripts-custom-logs"></a>Debugging Scripts > Custom Logs
-
-[Back to Contents](#contents)
-
-You can use methods of the [Log](https://backstage.forgerock.com/docs/idcloud-idm/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html) class to output custom logs from your connector scripts. For example:
-
-```groovy
-import org.identityconnectors.common.logging.Log
-
-def log = log as Log
-def operation = operation as OperationType
-
-log.info 'This is ' + operation + ' script'
-```
-
-```
-[rcs] Jul 20, 2022 12:41:12 AM INFO  TestScript: This is TEST script
-```
-
-> Using `Log` to output an object information without referencing its individual properties might require converting the object to a string; otherwise, you could get a wordy error in the output. For example:
->
-> ```groovy
-> log.info operation
-> ```
->
-> ```
-> groovy.lang.MissingMethodException: No signature of method: org.identityconnectors.common.logging.Log.info() is applicable for argument types: (org.forgerock.openicf.connectors.groovy.OperationType) values: [TEST]
-> ```
-
-Use the `Log` class for debugging output that is to stay in the code and to be used in test and production.
-
-During the development phase, however, for a quick temporary output, you could use the [println](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/PrintStream.html) method. This will allow to print out content of different types of variables without the additional information about date, time, and log level; which might not bear a lot of value during script development.
-
-For example:
-
-```groovy
-println operation
-```
-
-
-```
-[rcs] TEST
-```
-
-You don't have to convert your object to a string explicitly before sending it to `println` because the latter will utilize `toString()` method available in all Java objects.
-
-> Much of Java functionality is [imported in Groovy by default](https://groovy-lang.org/structure.html#_default_imports). Hence, you don't need to reference the `println` method with the full `System.out.println` statement, which comes from the `java.lang.*` package.
-
-### <a id="developing-debugging-scripts-try-catch" name="developing-debugging-scripts-try-catch"></a>Debugging Scripts > Try and Catch
-
-[Back to Contents](#contents)
-
-Generally, you should wrap your code with a `try/catch` block, and observe custom error messages in the logs output.
-
-For example (where `[ . . . ]` denotes an omission from the original source):
-
-```groovy
-import org.identityconnectors.common.logging.Log
-[ . . . ]
-
-def log = log as Log
-
-try {
-    def operation = operation as OperationType
-    [ . . . ]
-    switch (objectClass) {
-        [ . . . ]
-    }
-} catch (Exception e) {
-    def message = "${operation.name()} operation of type: ${objectClass.objectClassValue} is not supported."
-
-    log.error message
-    log.error "Exception: ${e.getMessage()}."
-
-    throw new UnsupportedOperationException(message)
-}
-```
-
-> [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/UnsupportedOperationException.html) is a Java exception, which, among other most commonly used Java classes, is [automatically provided in Groovy scripts](https://groovy-lang.org/structure.html#_default_imports).
-
-A script error handled in this way will result in a message displayed on the connector data page in IDM Admin:
-
-<img alt="Error Message in IDM Admin Connector Screen, which reads—SEARCH operation of type: organization is not supported." src="README_files/rcs.connector.search-script.handled-exception.png" width="1024">
-
-Passing the exception information and/or some custom messages to the logs output could provide helpful content for debugging. For example:
-
-```bash
-[rcs] Jun 22, 2022 2:35:11 AM ERROR SearchScript: SEARCH operation of type: organization is not supported.
-[rcs] Jun 22, 2022 2:35:11 AM ERROR SearchScript: Exception: ERROR: relation "organisations" does not exist%0A  Position: 15.
-```
 
 ##  <a id="developing-connector-configuration" name="developing-connector-configuration"></a>Connector Configuration
 
