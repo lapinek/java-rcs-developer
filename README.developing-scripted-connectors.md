@@ -20,6 +20,34 @@ While primary focus and many references in this article are pointed to Identity 
     * [Bindings](#developing-connector-context-bindings)
     * [Global Variables](#developing-connector-context-globals)
 * [Scripted Connector Bindings](#developing-connector-bindings)
+* [Scripted Connectors (based on Groovy Toolkit)](#developing-scripted-connectors)
+    * [Groovy Connector](#developing-scripted-connectors-groovy)
+        * [Requirements](#developing-scripted-connectors-groovy-requirements)
+            * [Schema Script](#developing-scripted-connectors-groovy-requirements-schema)
+                * [Example Data](#developing-scripted-connectors-groovy-requirements-schema-example-data)
+                    * [Users](#developing-scripted-connectors-groovy-requirements-schema-example-data-users)
+                    * [Groups](#developing-scripted-connectors-groovy-requirements-schema-example-data-groups)
+                * [Object Classes](#developing-scripted-connectors-groovy-requirements-schema-object-types)
+                    * [objectClass(Closure closure)](#developing-scripted-connectors-groovy-requirements-schema-object-types-object-class)
+                    * [defineObjectClass(ObjectClassInfo objectClassInfo[, . . . ])](#developing-scripted-connectors-groovy-requirements-schema-object-types-define-object-class)
+                * [Example Schema Script](#developing-scripted-connectors-groovy-requirements-schema-example)
+            * [Search Script](#developing-scripted-connectors-groovy-requirements-search)
+                * [Requesting Search Operation](#developing-scripted-connectors-groovy-requirements-search-requesting-data)
+                    * [IDM's REST](#developing-scripted-connectors-groovy-requirements-search-requesting-data-rest)
+                    * [IDM Script](#developing-scripted-connectors-groovy-requirements-search-requesting-data-script)
+                * [Responding with Data](#developing-scripted-connectors-groovy-requirements-search-responding-with-data)
+                * [Filtering Results](#developing-scripted-connectors-groovy-requirements-search-filtering)
+                    * [Read by Resource ID](#developing-scripted-connectors-groovy-requirements-search-filtering-id)
+                    * [Query Definition](#developing-scripted-connectors-groovy-requirements-search-filtering-query-expression)
+                * [Paging and Sorting](#developing-scripted-connectors-groovy-requirements-search-paging)
+                    * [Page Size](#developing-scripted-connectors-groovy-requirements-search-paging-size)
+                    * [Sorting](#developing-scripted-connectors-groovy-requirements-search-paging-sorting)
+                    * [Tracking Position in Paged Results](#developing-scripted-connectors-groovy-requirements-search-paging-tracking)
+                * [Attributes to Get](#developing-scripted-connectors-groovy-requirements-search-attributes)
+                * [Example Search Script](#developing-scripted-connectors-groovy-requirements-search-example)
+        * [Registering Connection](#developing-scripted-connectors-groovy-registering-connection)
+            * [Platform UI](#developing-scripted-connectors-groovy-registering-connection-platform-ui)
+            * [IDM's REST](#developing-scripted-connectors-groovy-registering-connection-rest)
 * [Connector Configuration](#developing-connector-configuration)
     * ["configurationProperties"](#developing-connector-configuration-configuration-properties)
         * ["customConfiguration" and "customSensitiveConfiguration"](#developing-connector-configuration-configuration-properties-custom-configuration)
@@ -45,8 +73,6 @@ While primary focus and many references in this article are pointed to Identity 
                 * ["run on connector"](#developing-connector-configuration-system-actions-idm-script-examples-on-connector)
                 * ["run on resource"](#developing-connector-configuration-system-actions-idm-script-examples-on-resource)
         * [Support in Connectors](#developing-connector-configuration-system-actions-support)
-* [Example Connectors](#example-connectors)
-    * [Scripted SQL Connector](#example-connectors-scripted-sql)
 
 ## <a id="developing-ide" name="developing-ide"></a>Choosing IDE
 
@@ -94,7 +120,7 @@ In the output, this will produce similar to the following:
         {
             "connectorHostRef": "rcs",
             "displayName": "SSH Connector",
-            "bundleVersion": "1.5.20.12-SNAPSHOT",
+            "bundleVersion": "1.5.20.15",
             "systemType": "provisioner.openicf",
             "bundleName": "org.forgerock.openicf.connectors.ssh-connector",
             "connectorName": "org.forgerock.openicf.connectors.ssh.SSHConnector"
@@ -103,7 +129,7 @@ In the output, this will produce similar to the following:
         {
             "connectorHostRef": "rcs",
             "displayName": "CSV File Connector",
-            "bundleVersion": "1.5.20.12-SNAPSHOT",
+            "bundleVersion": "1.5.20.15",
             "systemType": "provisioner.openicf",
             "bundleName": "org.forgerock.openicf.connectors.csvfile-connector",
             "connectorName": "org.forgerock.openicf.csvfile.CSVFileConnector"
@@ -145,44 +171,56 @@ For example:
 
 ```groovy
 try {
-    def message = operation + ' script'
 
-    [ . . . ]
+    // code
+
 } catch (e) {
-    log.error 'EXCEPTION: ' + e.message
     throw new UnsupportedOperationException('Error occurred during ' + operation + ' operation')
 }
 ```
 
 > [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/UnsupportedOperationException.html) is a Java exception, which, among some other most commonly used Java classes, is [automatically provided in Groovy scripts](https://groovy-lang.org/structure.html#_default_imports).
 
-> To convert an object to a String using the plus operator, you have to start your expression with a String, and use the String concatenation operator: `def message = 'script ' + operation`. >
->
-> An object's `.plus()` method invoked by the `+` operator might not be taking a String as its argument. Hence, for the `operation` object, this particular expression in the `try` block will throw an exception.
-
-When you look for a connector data in the IDM admin UI under CONFIGURE > CONNECTORS > _connection name_ > Data, it will call the search script, and the browser response will contain:
+Should an exception occur, a request for search operation would return an error:
 
 ```json
 {"code":404,"reason":"Not Found","message":"Error occurred during SEARCH operation"}
 ```
 
-For a search script, the browser response will be reflected in the UI as well:
+If it is supported, the browser response will be reflected in the UI:
 
-<img alt="Error Message in IDM admin UI in a Connector Screen reading Error occurred during SEARCH operation." src="README_files/rcs.connector.search-script.handled-exception.png" width="1024">
+<img alt="Error occurred during SEARCH operation message in IDM admin UI on the Data tab for Groovy connector." src="README_files/idm-admin-ui-applications-groovy-data-error.png" width="1024">
 
-At the same time, in the RCS logs, you will find a more detailed message with additional information (added manually and/or by the `Log` class) that could help with your debugging:
+If you throw custom exceptions in your code, you can preserve the custom messages by catching a specific exception (type).
 
-`RCS logs`
+For example:
 
+`SearchScript.groovy`
+
+```groovy
+try {
+
+    // code
+
+} catch (UnsupportedOperationException e) {
+    /**
+     * Re-throw custom exception; for example, an exception on unrecognized object class.
+     */
+    throw e
+} catch (e) {
+    throw new UnsupportedOperationException('Error occurred during ' + operation + ' operation')
+}
 ```
-[rcs] Jun 22, 2022 2:35:11 AM ERROR SearchScript: EXCEPTION: No signature of method: org.forgerock.openicf.connectors.groovy.OperationType.plus() is applicable for argument types: (String) values: [ script]%0APossible solutions: values(), split(groovy.lang.Closure), is(java.lang.Object), use([Ljava.lang.Object;), wait(), name()
-```
+
+<img alt="SEARCH operation of type: __ACCOUNT__ is not supported error in Platform admin UI on the Data tab for Groovy application." src="README_files/platform-admin-ui-applications-groovy-data-error-object-class.png" width="1024">
+
+For debugging purposes, you can output more detailed information about an exception in the RCS logs.
 
 ### <a id="developing-debugging-scripts-custom-logs" name="developing-debugging-scripts-custom-logs"></a>Debugging Scripts > Custom Logs
 
 [Back to Contents](#contents)
 
-You can use methods of the [Log](https://backstage.forgerock.com/docs/idcloud-idm/latest/_attachments/apidocs/org/identityconnectors/comprintlnmon/logging/Log.html) class to output custom logs from your connector scripts by passing in a String containing your debugging content.
+You can use methods of the [Log](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html) class to output custom logs from your connector scripts by passing in a String containing your debugging content.
 
 For example:
 
@@ -563,13 +601,9 @@ This should help understand the process of attaching a debugger to your RCS inst
 
 [Back to Contents](#contents)
 
-A [Groovy script](https://docs.groovy-lang.org/latest/html/api/groovy/lang/Script.html) gets its context via [bindings](https://docs.groovy-lang.org/latest/html/api/groovy/lang/Binding.html) defined outside of the script. For connector scripts, the variable bindings are defined according to the registered [connector type](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/preface.html#remote-connectors-desc) (Groovy, Scripted REST, or Scripted SQL for a scripted connector) and the [script operation type](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/groovy-operations.html) exposed as an [ICF interface](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/interfaces.html).
+A [Groovy script](https://docs.groovy-lang.org/latest/html/api/groovy/lang/Script.html) gets its context via [bindings](https://docs.groovy-lang.org/latest/html/api/groovy/lang/Binding.html)—that is, global variables defined outside of the script. For connector scripts, the variable bindings are defined according to the registered [connector type](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/preface.html#remote-connectors-desc) (Groovy, Scripted REST, or Scripted SQL for a scripted connector) and the [script operation type](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/groovy-operations.html) exposed as an [ICF interface](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/interfaces.html).
 
-The connector type and the script operation type are derived from the connector configuration received by IDM at the time when the connection is registered, as described in the final step of the [Create a connector configuration over REST](https://backstage.forgerock.com/docs/idcloud/latest/solution-scripted-rest-connector.html) docs.
-
-> Currently, a scripted connection cannot be configured with the IDM admin UI.
->
-> At the same time, defining and capturing connection details as REST requests in your source code allows to describe your RCS setup in reproducible way and in conjunction with script development efforts and configuration.
+The connector type and the script operation type are derived from the connector configuration received by IDM at the time when the connection is registered.
 
 The final connection configuration will have reference to the connector type, scripts for different connector operations, and the language in which the scripts are written.
 
@@ -686,7 +720,7 @@ For example:
 >     "config": "config/provisioner.openicf/groovy",
 >     "connectorRef": {
 >         "connectorHostRef": "rcs",
->         "bundleVersion": "1.5.20.8-SNAPSHOT",
+>         "bundleVersion": "1.5.20.15",
 >         "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
 >         "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
 >     },
@@ -700,7 +734,7 @@ For example:
 > }
 > ```
 >
-> This content is returned by the [Test operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-test.html). The test script cannot not return anything in the response, but it can throw an exception that will populate the "ok" key with `false` and provide the exception message in the "error" key.
+> This content is returned by the [Test operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-test.html). The test script cannot not return anything in the response, but it can throw an exception that will populate the "ok" key with `false` and provide the exception message in the "error" key.
 
 In the RCS logs, you will see the following:
 
@@ -834,7 +868,7 @@ Doing so and adding corresponding dependencies to your scripted connector projec
 
 [Back to Contents](#contents)
 
-In [ICF operations with Groovy scripts](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/scripts/script-authenticate.html), you can find descriptions and examples of use for common and operation-specific input variables (that is, bindings) present in various types of connector scripts.
+In [ICF operations with Groovy scripts](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-authenticate.html), you can find descriptions and examples of use for common and operation-specific input variables (that is, bindings) present in various types of connector scripts.
 
 Some bindings could represent an object with properties not currently outlined in the docs. Below, find additional information about some common properties available in any connector script (irrespective of the connector type and the script designation):
 
@@ -874,13 +908,2644 @@ Some bindings could represent an object with properties not currently outlined i
 
         See the [Connector Configuration > "configurationProperties" > "customConfiguration" and "customSensitiveConfiguration"](#developing-connector-configuration-configuration-properties-custom-configuration) section for details.
 
+## <a id="developing-scripted-connectors" name="developing-scripted-connectors"></a>Scripted Connectors
+
+[Back to Contents](#contents)
+
+The scripted connectors are based on [Groovy Connector Toolkit](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html).
+
+Out of the box, ICF bundles the following scripted connectors:
+
+* Groovy ([non-poolable and poolable connector implementations](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html#groovy-connector-interfaces))
+
+    All connector operations are implemented in Groovy, with no built in support for a particular resource type.
+
+* ScriptedREST
+
+    The scripts are provided with automatically maintained by ICF customizable connection to a REST interface.
+
+* ScriptedSQL
+
+    The scripts are provided with automatically maintained by ICF connection to a JDBC data source.
+
+> As described in [Configure connectors over REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-connector.html#connector-wiz-REST), you can check what connectors are bundled with your RCS by visiting the `/openidm/system?_action=availableConnectors` endpoint and filtering the response against your RCS server name.
+>
+> In the following example, `connectorServerName` corresponds to the namesake setting in the `ConnectorServer.properties` file as explained in the [Configure a remote server](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html#configure_a_remote_server) doc. In Identity Cloud, you can see individual Connector Servers and Server Clusters in the Platform admin UI under Identities > Connect; you can use either a server or a cluster name to identify your RCS in the example below:
+>
+> `IDM admin UI browser console`
+>
+> ```javascript
+> (async function () {
+>     var connectorServerName = 'rcs';
+>
+>     /**
+>      * Get an array of available connector references.
+>      */
+>     var { connectorRef } = await $.ajax({
+>         method: 'POST',
+>         url: '/openidm/system?_action=availableConnectors'
+>     });
+>
+>     /**
+>      * Get a list of scripted connectors for an RCS.
+>      */
+>     var scriptedConnectorRef = connectorRef.filter((connectorRef) => {
+>         return connectorRef.connectorHostRef === connectorServerName;
+>     }).filter((connectorRef) => {
+>         return connectorRef.connectorName.toLowerCase().includes('scripted');
+>     });
+>
+>     console.log('scriptedConnectorRef', JSON.stringify(scriptedConnectorRef, null, 4));
+> }());
+> ```
+>
+> ```json
+> [
+>     {
+>         "connectorHostRef": "rcs",
+>         "displayName": "Scripted SQL Connector",
+>         "bundleVersion": "1.5.20.15",
+>         "systemType": "provisioner.openicf",
+>         "bundleName": "org.forgerock.openicf.connectors.scriptedsql-connector",
+>         "connectorName": "org.forgerock.openicf.connectors.scriptedsql.ScriptedSQLConnector"
+>     },
+>     {
+>         "connectorHostRef": "rcs",
+>         "displayName": "Scripted REST Connector",
+>         "bundleVersion": "1.5.20.15",
+>         "systemType": "provisioner.openicf",
+>         "bundleName": "org.forgerock.openicf.connectors.scriptedrest-connector",
+>         "connectorName": "org.forgerock.openicf.connectors.scriptedrest.ScriptedRESTConnector"
+>     },
+>     {
+>         "connectorHostRef": "rcs",
+>         "displayName": "Scripted Poolable Groovy Connector",
+>         "bundleVersion": "1.5.20.15",
+>         "systemType": "provisioner.openicf",
+>         "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
+>         "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedPoolableConnector"
+>     },
+>     {
+>         "connectorHostRef": "rcs",
+>         "displayName": "Scripted Groovy Connector",
+>         "bundleVersion": "1.5.20.15",
+>         "systemType": "provisioner.openicf",
+>         "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
+>         "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
+>     }
+> ]
+> ```
+
+### <a id="developing-scripted-connectors-groovy" name="developing-scripted-connectors-groovy"></a>Scripted Connectors > Groovy Connector
+
+[Back to Contents](#contents)
+
+#### <a id="developing-scripted-connectors-groovy-requirements" name="developing-scripted-connectors-groovy-requirements"></a>Scripted Connectors > Groovy Connector > Requirements
+
+[Back to Contents](#contents)
+
+Before you can register a connection in IDM, your connector server needs to provide a certain infrastructure, to which your [connection configuration](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-connector.html) will refer via the following "configurationProperties" keys:
+
+* "scriptRoots"
+
+    An array of locations on the connector server containing Groovy scripts that will be performing [ICF Operations](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/groovy-operations.html).
+
+    For example, on your RCS, `/opt/openicf/scripts/groovy` path could point to a folder with the scripts used by a connection. Then, the connection configuration may look like the following:
+
+    `provisioner.openicf-groovy.json`
+
+    ```json
+    {
+        "connectorRef": {
+            "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
+            "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
+
+            [ . . . ]
+        },
+        "configurationProperties": {
+            "scriptRoots": [
+                "/opt/openicf/scripts/groovy"
+            ],
+
+            [ . . . ]
+        },
+
+        [ . . . ]
+    }
+    ```
+
+    > "scriptRoots" could also refer to a (connector) `.jar` file containing the scripts.
+    >
+    > For example:
+    >
+    > `provisioner.openicf-groovy.json`
+    >
+    > ```json
+    > [ . . . ]
+    >
+    > "scriptRoots" : [
+    >     "jar:file:connectors/groovy.jar!/scripts/"
+    > ]
+    >
+    > [ . . . ]
+    > ```
+    >
+
+* "schemaScriptFileName"
+
+    The file name of a [script implementing the Schema operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-schema.html). The script file needs to exist under a "scriptRoots" location on the connector server.
+
+    For example, on your RCS, the script could be placed at `/opt/openicf/scripts/groovy/SchemaScript.groovy`.
+
+    The connection configuration would refer to this location as:
+
+    `provisioner.openicf-groovy.json`
+
+    ```json
+    {
+        [ . . . ]
+
+        "configurationProperties": {
+            "scriptRoots": [
+                "/opt/openicf/scripts/groovy"
+            ],
+            "schemaScriptFileName": "SchemaScript.groovy",
+
+            [ . . . ]
+        },
+
+        [ . . . ]
+    }
+    ```
+
+    If you don't provide a _valid_ reference to a schema script in your connection configuration, you will not be able to register it in IDM.
+
+    Schema script functionality is described in details in the [Schema Script](#developing-scripted-connectors-groovy-requirements-schema) chapter, and an example implementation used in this writing can be found in the [Schema Script > Example Schema Script](#developing-scripted-connectors-groovy-requirements-schema-example) section.
+
+* "searchScriptFileName"
+
+    A connection provides access to the remote data. Normally, this data represents a list of resources obtained from a [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html) performed against the target system. Both Platform and IDM admin UIs provide Data tab for displaying this data in each registered connection. In a Groovy Toolkit connector, the search operation is performed with a [search or query script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-search.html), which is referenced in the connection configuration via the "searchScriptName" key.
+
+    For example, on your RCS, the search script could exist at `/opt/openicf/scripts/groovy/SearchScript.groovy`. Then, in your connection configuration, you would refer to it as:
+
+    `provisioner.openicf-groovy.json`
+
+    ```json
+    {
+        [ . . . ]
+
+        "configurationProperties": {
+            "scriptRoots": [
+                "/opt/openicf/scripts/groovy"
+            ],
+            "schemaScriptFileName": "SchemaScript.groovy",
+            "searchScriptFileName": "SearchScript.groovy",
+
+            [ . . . ]
+        },
+
+        [ . . . ]
+    }
+    ```
+
+    If you provide no reference to a search script file in your connection configuration or set "searchScriptFileName" to `null`, your will be able to register (via IDM's REST), validate, and use your connection for non-search operations, but search operation requests will be responded with 404-Not Found errors.
+
+    If you provide an invalid reference under the "searchScriptFileName" key, your connection will not be validated, producing a 500 Internal Server Error with a message similar to the following:
+
+    > groovy.util.ResourceException: Cannot open URL: file:/opt/openicf/scripts/groovy/<path/to/non-existing-file>
+
+    Search script functionality is described in details in the [Search Script](#developing-scripted-connectors-groovy-requirements-search) chapter, and a fully functional example implementation can be found in the [Search Script > Example Search Script](#developing-scripted-connectors-groovy-requirements-search-example) section.
+
+This means that in order to register a connection, your RCS:
+
+* MUST have a valid [schema script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-schema.html).
+
+* SHOULD have a [search or query script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-search.html)
+
+##### <a id="developing-scripted-connectors-groovy-requirements-schema" name="developing-scripted-connectors-groovy-requirements-schema"></a>Scripted Connectors > Groovy Connector > Requirements > Schema Script
+
+[Back to Contents](#contents)
+
+Your [schema script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-schema.html) MUST return an instance of [Schema](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Schema.html).
+
+The schema instance MUST be populated with one or more instances of [ObjectClassInfo](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClassInfo.html), each representing a data object class (type) that you decided to expose via your connector.
+
+To define a connector schema, you can call `builder.schema(Closure closure)` method in your schema script.
+
+Inside the closure passed in the `builder.schema(Closure closure)` method, you can call `objectClass(Closure closure)` method. Each call to this method will create an [ObjectClassInfo](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClassInfo.html) instance and add it to your connector schema; thus, defining an object class. Since at least one object class needs to be present in a schema, you need to call the `objectClass(Closure closure)` at least once.
+
+If you pass an empty closure into the `objectClass(Closure closure)` method, the resulting object class instance will be of the default `__ACCOUNT__` type and have the default attribute `__NAME__`.
+
+For example:
+
+`SchemaScript.groovy`
+
+```groovy
+builder.schema {
+    objectClass {
+
+    }
+}
+```
+
+This is the minimal functionality schema script that will allow for registering connection via IDM's REST—as [demonstrated later in this writing](#developing-scripted-connectors-groovy-registering-connection).
+
+When a connection is registered, you will be able to request its schema via IDM's REST:
+
+`/openidm/system/<connection-name>?_action=schema`
+
+> You cannot request a connector schema from an IDM script, because `schema` action in scripts is not supported on system resources.
+
+For example:
+
+`IDM admin UI browser console`
+
+```javascript
+(async function () {
+    var data = await $.ajax('/openidm/system/groovy?_action=schema', {
+        method: 'POST'
+    });
+
+    console.log(JSON.stringify(data, null, 4));
+}());
+```
+
+The aforementioned minimal example of a schema definition would result in the following response:
+
+```json
+{
+    "objectTypes": {
+        "__ACCOUNT__": {
+            "$schema": "http://json-schema.org/draft-03/schema",
+            "id": "__ACCOUNT__",
+            "type": "object",
+            "nativeType": "__ACCOUNT__",
+            "properties": {
+                "__NAME__": {
+                    "type": "string",
+                    "nativeName": "__NAME__",
+                    "nativeType": "string"
+                }
+            }
+        }
+    },
+    "operationOptions": {
+        [ . . . ]
+    }
+}
+```
+
+Note:
+
+* A connector schema contains two keys:
+
+    * "objectTypes"
+
+    * "operationOptions"
+
+        By default, operation options associated with an object class have no properties (that is, no options) defined. At the time of this writing, adding operation options in a schema script is not supported and will not change connector's behavior.
+
+* The "objectTypes" key is populated with a single object class definition of `__ACCOUNT__` type with a single string attribute `__NAME__`.
+
+If your Groovy connector is not used for [synchronization and reconciliation](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html), and doesn't employ the [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html) in any other way, you do not need to define any specific data classes for the remote data objects. For example, you might be using your connector to perform arbitrary operations behind the target source authorization walls as described in the [Connector Configuration > "systemActions"](#developing-connector-configuration-system-actions) chapter. If that is the case, you can leave your schema script at that minimal code, and let it to be populated with the defaults.
+
+###### <a id="developing-scripted-connectors-groovy-requirements-schema-example-data" name="developing-scripted-connectors-groovy-requirements-schema-example-data"></a>Scripted Connectors > Groovy Connector > Schema Script > Example Data
+
+[Back to Contents](#contents)
+
+To illustrate functionality of a scripted Groovy connector that does employ the [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html), the following two data samples will be assumed:
+
+* <a id="developing-scripted-connectors-groovy-requirements-schema-example-data-users" name="developing-scripted-connectors-groovy-requirements-schema-example-data-users"></a>`Sample Users Data`
+
+    ```json
+    {
+        "Resources": [
+            {
+                "id": "2819c223-7f76-453a-919d-413861904646",
+                "userName": "bjensen",
+                "displayName": "Ms. Barbara J Jensen III",
+                "name": {
+                    "familyName": "Jensen",
+                    "givenName": "Barbara",
+                    "middleName": "Jane"
+                },
+                "emails": [
+                    {
+                        "value": "bjensen@example.com",
+                        "type": "work",
+                        "primary": true
+                    },
+                    {
+                        "value": "babs@jensen.org",
+                        "type": "home"
+                    }
+                ],
+                "schemas": [
+                    "urn:ietf:params:scim:schemas:core:2.0:User"
+                ]
+            },
+            [ . . . ]
+        ],
+        "itemsPerPage": 25,
+        "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:ListResponse"
+        ],
+        "startIndex": 1,
+        "totalResults": 25
+    }
+    ```
+
+    > This sample data is a partial realization of the System for Cross-domain Identity Management (SCIM) [User](https://www.rfc-editor.org/rfc/rfc7643#section-4.1) Resource Schema.
+
+* <a id="developing-scripted-connectors-groovy-requirements-schema-example-data-groups" name="developing-scripted-connectors-groovy-requirements-schema-example-data-groups"></a>`Sample Groups Data`
+
+    ```json
+    {
+        "Resources": [
+            {
+                "schemas": [
+                    "urn:ietf:params:scim:schemas:core:2.0:Group"
+                ],
+                "id": "e9e30dba-f08f-4109-8486-d5c6a331660a",
+                "displayName": "Tour Guides",
+                "members": [
+                    {
+                        "value": "2819c223-7f76-453a-919d-413861904646",
+                        "$ref": "https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646",
+                        "display": "Babs Jensen"
+                    },
+                    [ . . . ]
+                ]
+            }
+        ],
+        "schemas": [
+            "urn:ietf:params:scim:api:messages:2.0:ListResponse"
+        ],
+        "totalResults": 1,
+        "startIndex": 1,
+        "itemsPerPage": 100
+    }
+    ```
+
+    > This sample data is a partial realization of the SCIM [Group](https://www.rfc-editor.org/rfc/rfc7643#section-4.2) Resource Schema.
+
+###### <a id="developing-scripted-connectors-groovy-requirements-schema-object-types" name="developing-scripted-connectors-groovy-requirements-schema-object-types"></a>Scripted Connectors > Groovy Connector > Schema Script > Object Classes
+
+[Back to Contents](#contents)
+
+###### <a id="developing-scripted-connectors-groovy-requirements-schema-object-types-object-class" name="developing-scripted-connectors-groovy-requirements-schema-object-types-object-class"></a>Scripted Connectors > Groovy Connector > Schema Script > Object Classes > `objectClass(Closure closure) method`
+
+[Back to Contents](#contents)
+
+To customize your schema, inside the closure passed into the `builder.schema(Closure closure)` method you can call its delegate's `objectClass(Closure closure)` method. In turn, this method accepts a closure, inside which you can use methods defined in its delegate to describe a custom object class:
+
+* `type(String type)`
+
+    > Internally, this will call the [ObjectClassInfoBuilder.setType(java.lang.String type)](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClassInfoBuilder.html#setType(java.lang.String)) method.
+
+    The string that you provide as the argument will serve as an arbitrary name identifying a particular object class (type) on the remote source. In the Platform admin UI, this will become an option under Applications > _connection name_ > Provisioning > Connector Type (form); and in IDM admin UI, under CONFIGURE > CONNECTORS > _connection-name_ > Object Types and Data.
+
+    For example:
+
+    ```groovy
+    type 'myObjectTypeName'
+    ```
+
+    If you don't call the `type(String type)` method, and thus don't set the type explicitly, by default, it will be populated with a String value "\_\_ACCOUNT__" of the `ACCOUNT_NAME` constant predefined in the [ObjectClass](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClass.html) class.
+
+    > An "\_\_ACCOUNT__" instance of [ObjectClassInfo](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClassInfo.html) "represents a human being in the context of a specific system or application".
+    >
+    > Hence, in the schema script example above, where the object class definition represents users of the target system, you could leave the type name at its default. Setting it to an arbitrary name makes it more explicit and demonstrates the use of the `type(String type)` method.
+
+* `attribute(String name[, Class type[, Set flags]])`
+
+    This method will define an attribute (that is, a property) for the remote object class. You have to pass in at least the attribute name. In addition, you can reference a desired attribute's Java type (which by default is `java.land.String`) and provide a [Set](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Set.html) of [attribute flags](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.Flags.html)—all in that order.
+
+    For example:
+
+    ```groovy
+    attribute 'myAttributeName1', Boolean.class, EnumSet.of(REQUIRED, MULTIVALUED)
+    ```
+
+    > The exact syntax is described in the Java documentation for the `build(String name[, Class type[, Set flags]])` methods of the [AttributeInfoBuilder](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfoBuilder.html) class, which is used internally for constructing a static `AttributeInfo` object from the provided arguments.
+    >
+    > Eventually, it will call the [ObjectClassInfoBuilder.addAttributeInfo(AttributeInfo info)](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClassInfoBuilder.html#addAttributeInfo(org.identityconnectors.framework.common.objects.AttributeInfo)) method before building the object class instance.
+
+* `attribute(AttributeInfo attributeInfo)`
+
+    You can pass in an [AttributeInfo](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.html) instance to the `attribute` method as the only argument that will fully define your attribute. This way, a commonly used attribute can be defined once and then included in different object classes.
+
+    For example:
+
+    `SchemaScript.groovy`
+
+    ```groovy
+    import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.MULTIVALUED
+    import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.NOT_UPDATEABLE
+    import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.REQUIRED
+    import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.NOT_RETURNED_BY_DEFAULT
+
+    import org.identityconnectors.framework.common.objects.AttributeInfoBuilder
+
+    [ . . . ]
+
+    def attributeInfoBuilder = new AttributeInfoBuilder()
+
+    def myAttributeName1AttributeInfo = attributeInfoBuilder.build(
+        'myAttributeName1',
+        String.class,
+        EnumSet.of(REQUIRED, MULTIVALUED, NOT_UPDATEABLE, NOT_RETURNED_BY_DEFAULT)
+    )
+
+    objectClass {
+        type 'myObjectTypeName1'
+        attribute myAttributeName1AttributeInfo
+        [ . . . ]
+    }
+
+    objectClass {
+        type 'myObjectTypeName2'
+        attribute myAttributeName1AttributeInfo
+        [ . . . ]
+    }
+    ```
+
+    You could further optimize your connector code for maintenance by saving your attribute instances in a shared location, and applying them dynamically in other scripts by using methods of the [AttributeInfo](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.html) class. You could also combine this information with instructions on how to transform and map the attributes in relation to data sources and ICF constants for different object classes. The connector configuration can serve as the shared location, as described in the [Scripted Connector Bindings > configuration.propertyBag](#developing-connector-bindings-configuration-property-bag) chapter, or you could use an externally defined class for this purpose.
+
+* `attributes(Closure closure)`
+
+    This method takes a closure as its only argument and can define multiple attributes for the object class at once.
+
+    In each statement in the closure, the first literal, which acts as a method call, serves as the attribute's "nativeName", which is also how the attribute appears in the admin UIs. The literal could be followed by one or more comma-separated arguments—all optional and in any order:
+
+    * [Class](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Class.html) `type`
+
+    * [AttributeInfo.Flags](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.Flags.html) `flag`
+
+    For example:
+
+    ```groovy
+    attributes {
+        myAttributeName2()
+        myAttributeName3 Boolean.class
+        myAttributeName4 NOT_UPDATEABLE, MULTIVALUED
+        myAttributeName5 Map.class, NOT_RETURNED_BY_DEFAULT
+        myAttributeName6 MULTIVALUED, Map.class
+    }
+    ```
+
+    > In the closure, each statement represents a call to the [ObjectClassInfoBuilder.addAttributeInfo(AttributeInfo info)](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClassInfoBuilder.html#addAttributeInfo(org.identityconnectors.framework.common.objects.AttributeInfo)) method, and the line content is used for building an instance of the [AttributeInfo](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.html) class.
+
+    Note that if you don't provide any arguments after the attribute name literal, you have to indicate that it is a method call by adding parenthesis:
+
+    ```groovy
+    myAttributeName2()
+    ```
+
+A String type `__NAME__` attribute is always added to each object class in addition to properties defined with the `attribute(String name[, Class type[, Set flags]])` and/or `attributes(Closure closure)` methods. The `__NAME__` attribute is supposed to represent [user-friendly identifier of an object on the target resource](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Name.html) and could serve as a placeholder for username.
+
+For example, to represent the [Users](#developing-scripted-connectors-groovy-requirements-schema-example-data-users) and the [Groups](#developing-scripted-connectors-groovy-requirements-schema-example-data-groups)
+ original data structures, you could define the following object classes:
+
+`SchemaScript.groovy`
+
+```groovy
+/**
+ * Import AttributeInfo.Flags constants, so that you can reference them in the code.
+ * @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.Flags.html}
+ * @example
+ * import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.*
+ */
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.MULTIVALUED
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.NOT_UPDATEABLE
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.REQUIRED
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.NOT_RETURNED_BY_DEFAULT
+
+builder.schema {
+    /**
+     * Define a custom object class of a custom type 'users'
+     * with provided by default __NAME__ attribute
+     * and five additional attributes
+     * describing its original data structure.
+     */
+    objectClass {
+        type 'users'
+        attribute 'active', Boolean.class, EnumSet.of(REQUIRED)
+        attributes {
+            displayName()
+            name Map.class
+            emails Map.class, MULTIVALUED, REQUIRED
+            schemas MULTIVALUED, NOT_UPDATEABLE, NOT_RETURNED_BY_DEFAULT
+        }
+    }
+
+    /**
+     * Define an additional custom object class
+     * describing its original data structure.
+     */
+    objectClass {
+        type 'groups'
+        attributes {
+            displayName()
+            members Map.class, MULTIVALUED, REQUIRED
+            schemas MULTIVALUED, NOT_UPDATEABLE, NOT_RETURNED_BY_DEFAULT
+        }
+    }
+}
+```
+
+
+When defined in this way schema is requested via IDM's REST:
+
+`IDM admin UI browser console`
+
+```javascript
+(async function () {
+    var data = await $.ajax('/openidm/system/groovy?_action=schema', {
+        method: 'POST'
+    });
+
+    console.log(JSON.stringify(data, null, 4));
+}());
+```
+
+The response will contain the following "objectTypes":
+
+```json
+{
+    "objectTypes": {
+        "groups": {
+            "$schema": "http://json-schema.org/draft-03/schema",
+            "id": "groups",
+            "type": "object",
+            "nativeType": "groups",
+            "properties": {
+                "displayName": {
+                    "type": "string",
+                    "nativeName": "displayName",
+                    "nativeType": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "nativeType": "object"
+                    },
+                    "required": true,
+                    "nativeName": "members",
+                    "nativeType": "object"
+                },
+                "schemas": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "nativeType": "string"
+                    },
+                    "nativeName": "schemas",
+                    "nativeType": "string",
+                    "flags": [
+                        "NOT_UPDATEABLE",
+                        "NOT_RETURNED_BY_DEFAULT"
+                    ]
+                },
+                "__NAME__": {
+                    "type": "string",
+                    "nativeName": "__NAME__",
+                    "nativeType": "string"
+                }
+            }
+        },
+        "users": {
+            "$schema": "http://json-schema.org/draft-03/schema",
+            "id": "users",
+            "type": "object",
+            "nativeType": "users",
+            "properties": {
+                "displayName": {
+                    "type": "string",
+                    "nativeName": "displayName",
+                    "nativeType": "string"
+                },
+                "middleName": {
+                    "type": "string",
+                    "nativeName": "middleName",
+                    "nativeType": "string"
+                },
+                "active": {
+                    "type": "boolean",
+                    "nativeName": "active",
+                    "nativeType": "boolean"
+                },
+                "__NAME__": {
+                    "type": "string",
+                    "nativeName": "__NAME__",
+                    "nativeType": "string"
+                },
+                "secondaryEmail": {
+                    "type": "string",
+                    "nativeName": "secondaryEmail",
+                    "nativeType": "string",
+                    "flags": [
+                        "NOT_RETURNED_BY_DEFAULT"
+                    ]
+                },
+                "primaryEmail": {
+                    "type": "string",
+                    "nativeName": "primaryEmail",
+                    "nativeType": "string"
+                },
+                "givenName": {
+                    "type": "string",
+                    "nativeName": "givenName",
+                    "nativeType": "string"
+                },
+                "familyName": {
+                    "type": "string",
+                    "nativeName": "familyName",
+                    "nativeType": "string"
+                }
+            }
+        }
+    },
+    "operationOptions": {
+        [ . . . ]
+    }
+}
+```
+
+Note:
+
+* Attributes for the "users" object class are shown under its "properties" key in the response. The attributes are not necessarily in the order you have defined them.
+
+* In addition to the custom attributes, explicitly defined in the schema script, ICF will automatically add placeholders for the remote resource [unique identifier](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Uid.html) (`_id`) and [user-friendly identifier](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Name.html) (`__NAME__`) to the schema.
+
+* Adding [AttributeInfo.Flags](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.Flags.html) to an attribute definition will affect its behavior in ICF operations requested from IDM.
+
+    For example, adding the "NOT_RETURNED_BY_DEFAULT" flag would require the attribute to be explicitly requested from a search operation in order for it to be included in the search operation result.
+
+> Note also that any changes in a connector schema will not be automatically reflected in the IDM admin UI, until the object class is (re)added under CONFIGURE > CONNECTORS > _connector name_ > Object Types. In the case of the Platform admin UI, currently, the entire application representing a scripted Groovy connection has to be recreated to reflect the changes.
+
+###### <a id="developing-scripted-connectors-groovy-requirements-schema-object-types-define-object-class" name="developing-scripted-connectors-groovy-requirements-schema-object-types-define-object-class"></a>Scripted Connectors > Groovy Connector > Schema Script > Object Classes > `defineObjectClass(ObjectClassInfo objectClassInfo[, . . . ])`
+
+[Back to Contents](#contents)
+
+You can also define object classes by using the `defineObjectClass(ObjectClassInfo objectClassInfo[, java.lang.Class<? extends SPIOperation>... operations)]` method of the [SchemaBuilder](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SchemaBuilder.html) class inside the closure passed into the `builder.schema(Closure closure)` method in a schema script.
+
+For example:
+
+`SchemaScript.groovy`
+
+```groovy
+import org.identityconnectors.framework.common.objects.ObjectClassInfoBuilder
+import org.identityconnectors.framework.common.objects.AttributeInfoBuilder
+
+[ . .  . ]
+
+def myAttributeName1AttributeInfo = (new AttributeInfoBuilder()).build(
+    'myAttributeName1',
+    String.class,
+    EnumSet.of(REQUIRED, MULTIVALUED, NOT_UPDATEABLE, NOT_RETURNED_BY_DEFAULT)
+)
+
+def objectClassInfoBuilder = new ObjectClassInfoBuilder()
+objectClassInfoBuilder.setType 'myObjectTypeName3'
+objectClassInfoBuilder.addAttributeInfo myAttributeName1AttributeInfo
+def myObjectTypeName3ObjectClassInfo = objectClassInfoBuilder.build()
+
+defineObjectClass myObjectTypeName3ObjectClassInfo
+```
+
+A potential advantage of this approach is that you could share your object definitions with other scripts.
+
+For example:
+
+`SchemaDefinitions.groovy` (in the same file folder where the schema script is)
+
+```groovy
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.MULTIVALUED
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.NOT_UPDATEABLE
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.REQUIRED
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.NOT_RETURNED_BY_DEFAULT
+
+import org.identityconnectors.framework.common.objects.AttributeInfoBuilder
+import org.identityconnectors.framework.common.objects.ObjectClassInfoBuilder
+
+class SchemaDefinitions {
+   /**
+    * Define static, accessible without instantiation data holders.
+    */
+   static attributeInfos = [:]
+   static objectClassInfos = [:]
+
+   /**
+    * Run a static, instance-independent block of instructions once,
+    * when the class is loaded into memory,
+    * to populate the static properties.
+    */
+   static {
+      def attributeInfoBuilder = new AttributeInfoBuilder()
+      def objectClassInfoBuilder = new ObjectClassInfoBuilder()
+
+      /**
+       * Add the first attribute info instance.
+       */
+      attributeInfos.myAttributeName1 = attributeInfoBuilder.build(
+         'myAttributeName1',
+         String.class,
+         EnumSet.of(REQUIRED, MULTIVALUED, NOT_UPDATEABLE, NOT_RETURNED_BY_DEFAULT)
+      )
+
+      /**
+       * Add the first object info instance.
+       */
+      objectClassInfoBuilder.setType 'myObjectTypeName3'
+      objectClassInfoBuilder.addAttributeInfo attributeInfos.myAttributeName1
+      objectClassInfos.myObjectTypeName3 = objectClassInfoBuilder.build()
+   }
+}
+```
+
+`SchemaScript.groovy`
+
+```groovy
+import static SchemaDefinitions.objectClassInfos
+import static SchemaDefinitions.attributeInfos
+
+[ . . . ]
+
+objectClass {
+    type 'myObjectTypeName2'
+    attribute attributeInfos.myAttributeName1
+}
+
+defineObjectClass objectClassInfos.myObjectTypeName3
+```
+
+Similarly, you will be able to import these schema definitions in other scripts, and use them by utilizing methods of [ObjectClassInfo](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClassInfo.html) and [AttributeInfo](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.html). You can extend and/or modify this functionality for particular needs. While it will probably not provide noticeable performance benefits, this approach can make it easier to maintain the remote source models if they are subjects to (frequent) changes.
+
+###### <a id="developing-scripted-connectors-groovy-requirements-schema-example" name="developing-scripted-connectors-groovy-requirements-schema-example"></a>Scripted Connectors > Groovy Connector > Schema Script > Example Schema Script
+
+[Back to Contents](#contents)
+
+A connector's schema does not necessarily have to match the resource data structure—your search script can modify the original data to fit your schema definition.
+
+For example, representing complex data types in the [Users](#developing-scripted-connectors-groovy-requirements-schema-example-data-users) sample as individual string attributes will help with filtering search operation results, reduce dependency on transformation scripts, and make mapping and displaying the inbound data easier in the Platform and IDM admin UIs.
+
+The example schema script below demonstrates this approach in the `users` object class definition:
+
+`SchemaScript.groovy`
+
+```groovy
+/**
+ * Import AttributeInfo.Flags constants, so that you can reference them in the code.
+ * @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.Flags.html}
+ * @example
+ * import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.*
+ */
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.MULTIVALUED
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.NOT_UPDATEABLE
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.REQUIRED
+import static org.identityconnectors.framework.common.objects.AttributeInfo.Flags.NOT_RETURNED_BY_DEFAULT
+
+builder.schema {
+    /**
+     * Define a custom object class of a custom type
+     * with provided by default __NAME__ attribute
+     * and seven additional attributes
+     * representing individual properties in primitive formats.
+     */
+    objectClass {
+        type 'users'
+        attributes {
+            active Boolean.class
+            displayName()
+            givenName()
+            middleName()
+            familyName()
+            primaryEmail()
+            secondaryEmail NOT_RETURNED_BY_DEFAULT
+        }
+    }
+
+    /**
+     * Define an additional custom object class
+     * describing its original data structure.
+     */
+    objectClass {
+        type 'groups'
+        attributes {
+            displayName()
+            members Map.class, MULTIVALUED, REQUIRED
+            schemas MULTIVALUED, NOT_UPDATEABLE, NOT_RETURNED_BY_DEFAULT
+        }
+    }
+}
+```
+
+With this schema script, which will be assumed in further examples, your search script is expected to handle the remote [Users](#developing-scripted-connectors-groovy-requirements-schema-example-data-users) data in a way that all attribute values are returned as simple strings or a boolean in a search operation result. Doing so will be demonstrated in the [Example Search Script](#developing-scripted-connectors-groovy-requirements-search-example) chapter.
+
+##### <a id="developing-scripted-connectors-groovy-requirements-search" name="developing-scripted-connectors-groovy-requirements-search"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script
+
+[Back to Contents](#contents)
+
+If you don't need to request [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html) from your Groovy connector—for example, if you use your connector to perform arbitrary operations behind the target source authorization walls as described in the [system actions](#developing-connector-configuration-system-actions) chapter—and simply want to avoid the 404 error in the admin UIs, you can leave your search script empty.
+
+For example:
+
+`SearchScript.groovy`
+
+```groovy
+log.info 'Script: ' + configuration.scriptRoots + '/' + configuration.searchScriptFileName + ' Operation: ' + operation
+```
+
+A [search script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-search.html) that does not handle any data will mean query and read operations within IDM will always return an empty dataset.
+
+If you plan to use [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html) against your connector—for example, for [synchronization and reconciliation](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html)—your search script needs to respond with available data. In order to be completely usable by IDM, a search script should implement filtering, sorting, and paging according to the criteria that was included in a search operation request and delivered to the script via its bindings.
+
+###### <a id="developing-scripted-connectors-groovy-requirements-search-requesting-data" name="developing-scripted-connectors-groovy-requirements-search-requesting-data"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script > Requesting Search Operation
+
+[Back to Contents](#contents)
+
+When your search script is deployed, you can update your connection configuration with a reference to the script, as described in the [Registering Connection](#developing-scripted-connectors-groovy-registering-connection) chapter.
+
+With the schema and search scripts in place, you can request a search operation via [IDM's REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html) or from a [script in IDM](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html).
+
+In either case, you MUST include some search criteria in your request. Optionally, you can add sorting and paging arguments and a list of attributes to receive.
+
+###### <a id="developing-scripted-connectors-groovy-requirements-search-requesting-data-rest" name="developing-scripted-connectors-groovy-requirements-search-requesting-data-rest"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script > Requesting Search Operation > IDM's REST
+
+[Back to Contents](#contents)
+
+To initiate search operation using IDM's REST, you can send a GET request to your system endpoint for an object class and include all your arguments in the URL.
+
+* Read Request
+
+    You can search for a single resource (that is, a record in the remote system data) with a [ForgeRock Common REST](https://backstage.forgerock.com/docs/idm/7.3/crest/about-crest.html) (CREST) [Read](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-read.html) request. In this case, _path_ to the resource ID endpoint will become the search criteria, and you won't need any sorting or paging arguments. The simplest form of such request would have the following structure:
+
+    `/openidm/system/<connection-name>/<object-class>/<ID>`
+
+    Optionally, you can specify a list of the object attributes to receive:
+
+    `/openidm/system/<connection-name>/<object-class>/<ID>`\[?`<attributes-to-receive>`]
+
+    For example:
+
+    `/openidm/system/groovy/users/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx?_fields=__NAME__,displayName`
+
+* Query Request
+
+    You can request a list of resources by using CREST [Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html). The simplest form of such request would only include an all-inclusive "true" [query definition](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/queries.html):
+
+    `/openidm/system/<connection-name>/<object-class>?_queryFilter=true`
+
+    Optionally, you can request the result to be filtered, sorted, and paged, and specify the object attributes to receive:
+
+    `/openidm/system/<connection-name>/<object-class>`?`<query-definition>`\[&`<sorting-and-paging-arguments>`]\[&`<attributes-to-receive>`]
+
+    For example:
+
+    `/openidm/system/groovy/users?_queryFilter=true&_pageSize=4&_sortKeys=displayName,-__NAME__&_pagedResultsCookie=eHh4eHh4eHgteHh4eC14eHh4LXh4eHgteHh4eHh4eHh4eHh4&_fields=__NAME__,displayName`
+
+###### <a id="developing-scripted-connectors-groovy-requirements-search-requesting-data-script" name="developing-scripted-connectors-groovy-requirements-search-requesting-data-script"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script > Requesting Search Operation > IDM Script
+
+[Back to Contents](#contents)
+
+* Read Function
+
+    The simplest call to [openidm.read(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) will only include an object class and a resource ID reference:
+
+    ```javascript
+    openidm.read('system/<connection-name>/<object-class>/<ID>');
+    ```
+
+    Optionally, you can specify a list of the object attributes to receive:
+
+    ```javascript
+    openidm.read(
+        '/openidm/system/<connection-name>/<object-class>/<ID>',
+        null, // optional and can be omitted if no attributes to receive are specified
+        [
+            '<pointer>', // optional
+            // [ . . . ]
+        ]
+    );
+    ```
+
+    For example:
+
+    `IDM script`
+
+    ```javascript
+    const data = openidm.read(
+        'system/groovy/users/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+        null,
+        [
+            '__NAME__',
+            'displayName',
+            '*'
+        ]
+    );
+    ```
+
+* Query Function
+
+    The simplest call to [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) will only include an all-inclusive literal 'true':
+
+    ```javascript
+    openidm.query('system/<connection-name>/<object-class>', {
+        _queryFilter: 'true'
+    });
+    ```
+
+    Optionally, you can request the result filtered, sorted, and paged, and specify the object attributes to receive:
+
+    ```javascript
+    openidm.query(
+        '/openidm/system/<connection-name>/<object-class>',
+        {
+            '<query-definition>',
+            '<sorting-and-paging-arguments>' // optional
+        },
+        [
+            '<attributes-to-receive>' // optional
+        ]
+    );
+    ```
+
+    For example:
+
+    `IDM script`
+
+    ```javascript
+    const data = openidm.query(
+        'system/groovy/users',
+        {
+            _queryFilter: 'true',
+            _pageSize: 4,
+            _sortKeys: [
+                'displayName',
+                '-__NAME__'
+            ],
+            _pagedResultsCookie: 'eHh4eHh4eHgteHh4eC14eHh4LXh4eHgteHh4eHh4eHh4eHh4'
+        },
+        [
+            'displayName',
+            '__NAME__'
+        ]
+    );
+    ```
+
+    Note that the `_queryFilter` value MUST be a String.
+
+> You can [validate](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/script-endpoint.html) your scripts over IDM's REST.
+>
+> For example:
+>
+> `IDM admin UI browser console`
+>
+> ```javascript
+> (async function () {
+>     var script = `
+>         try {
+>             const data = openidm.query(
+>                 'system/groovy/users',
+>                 {
+>                     _queryFilter: 'true'
+>                 }
+>             );
+>
+>             data;
+>         } catch (e) {
+>             logger.error(String(e));
+>
+>             e.message;
+>         }
+>     `;
+>
+>     var data = await $.ajax('/openidm/script?_action=eval', {
+>         method: 'POST',
+>         headers: {
+>             'Content-Type': 'application/json'
+>         },
+>         data: JSON.stringify({
+>             type: 'text/javascript',
+>             source: script
+>         })
+>     });
+>
+>     console.log(JSON.stringify(data, null, 4));
+> }());
+> ```
+
+###### <a id="developing-scripted-connectors-groovy-requirements-search-responding-with-data" name="developing-scripted-connectors-groovy-requirements-search-responding-with-data"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script > Responding with Data
+
+[Back to Contents](#contents)
+
+As described in the [Search or query script > Returning Search Results](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-search.html#_returning_search_results) docs, to return a resource, your script needs to call `handler(Closure closure)` or `handler(ConnectorObject connectorObject)` method.
+
+For example:
+
+`SearchScript.groovy`
+
+```groovy
+handler {
+    uid 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+    id 'firstname.lastname'
+    attribute 'active', true
+    attribute 'displayName', 'Firstname Lastname'
+    attribute 'givenName', 'Firstname'
+    attribute 'middleName', null
+    attribute 'familyName', 'Lastname'
+    attribute 'primaryEmail', 'firstname.lastname@example.com'
+    attribute 'secondaryEmail', 'firstname.lastname@example.org'
+    attribute 'notInSchema', 'Not in Schema'
+}
+```
+
+A `handler` MUST include the [unique identifier of an object within the name-space of the target resource](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Uid.html) as the `uid` attribute for each resource. If your handler didn't define resource `uid`, you'd encounter an exception:
+
+```sh
+java.lang.IllegalArgumentException: The Attribute set must contain a 'Uid'
+```
+
+Each search operation result MUST also include the [user-friendly identifier of an object on the target resource](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Name.html). In your handler, you can provide this identifier as the `id` attribute; if omitted, it will be populated automatically with the same value as the resource `uid`.
+
+In addition to `uid` and `id`, which are required and will respectively populate "\_id" and "\_\_NAME__" fields in the search operation result, the `handler` method SHOULD also return all the other attributes defined in the object class schema. Any attributes that are not explicitly included in a handler and any attributes that are not defined in the schema will be omitted from the response.
+
+The last script example calls the `handler` method once and thus will always respond with a single resource data populated with the hardcoded values, regardless of any criteria included in the search operation request.
+
+For example:
+
+`IDM admin UI browser console`
+
+```javascript
+(async function () {
+    var data = await $.ajax('/openidm/system/groovy/users?_queryFilter=true');
+
+    console.log(JSON.stringify(data, null, 4));
+}());
+```
+
+With the [Example Schema](#developing-scripted-connectors-groovy-requirements-schema-example) deployed on the connector server, and referenced in the connection configuration, the response will look like the following:
+
+```json
+{
+    "result": [
+        {
+            "_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+            "__NAME__": "firstname.lastname",
+            "primaryEmail": "firstname.lastname@example.com",
+            "displayName": "Firstname Lastname",
+            "familyName": "Lastname",
+            "givenName": "Firstname",
+            "active": true
+        }
+    ],
+    "resultCount": 1,
+    "pagedResultsCookie": null,
+    "totalPagedResultsPolicy": "NONE",
+    "totalPagedResults": -1,
+    "remainingPagedResults": -1
+}
+```
+
+Note:
+
+* The result of a search operation in response to a query request is a list of objects.
+
+* The `uid` and `id` attributes defined in the search script populate "\_id" and "\_\_NAME__" fields in the result.
+
+* The `secondaryEmail` attribute is omitted from the result, because it is marked with the `NOT_RETURNED_BY_DEFAULT` [flag](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.Flags.html) in the connector schema, and the attribute was not explicitly requested.
+
+* The `notInSchema` attribute is omitted from the result, because it was not defined in the `users` object class.
+
+In the Platform admin UI, these result could appear in the following way:
+
+<img src="README_files/platform-admin-ui-applications-groovy-data.png" alt="Data tab content for Groovy application in the Platform admin UI" width="1024">
+
+To respond with multiple resources, you need to call the `handler` method for each resource to be included in the search operation result. The source data should be available for the search script as an iterable data type, such as [java.util.ArrayList](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/ArrayList.html). Then, you can loop over the list and call the `handler` method for each object in the list.
+
+For example, if your data comes in a JSON (file), you can parse it with Groovy and iterate over the result:
+
+`SearchScript.groovy`
+
+```groovy
+import groovy.json.JsonSlurper
+
+def jsonSlurper = new JsonSlurper()
+
+def json = new File('/usr/local/src/users.json')
+def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
+
+resources.each { resource ->
+    handler {
+        uid resource.id
+        id resource.userName
+        attribute 'active', !!resource.active
+        attribute 'displayName', resource.displayName
+        attribute 'givenName', resource.name.givenName // 1
+        attribute 'middleName', resource.name.middleName
+        attribute 'familyName', resource.name.familyName
+        attribute 'primaryEmail', (resource.emails.find { resource.primary })?.value // 2
+        attribute 'secondaryEmail', (resource.emails.find { !resource.primary })?.value
+    }
+}
+```
+
+1. Individual value from the user's name object can be used to populate a field.
+2. Array methods can be used to obtain an individual object from a list.
+
+> The example data here is a SCIM [Query Resources](https://www.rfc-editor.org/rfc/rfc7644#section-3.4.2) response from the `/Users` endpoint, in which case a list of users is saved under the "Resources" key.
+
+Now, the result of the search operation will be populated dynamically from the provided data.
+
+For example:
+
+```json
+{
+    "result": [
+        {
+            "_id": "2819c223-7f76-453a-919d-413861904646",
+            "__NAME__": "bjensen",
+            "displayName": "Ms. Barbara J Jensen III",
+            "primaryEmail": "bjensen@example.com",
+            "middleName": "Jane",
+            "active": false,
+            "givenName": "Barbara",
+            "familyName": "Jensen"
+        },
+        [ . . . ]
+    ],
+    "resultCount": 19,
+    "pagedResultsCookie": null,
+    "totalPagedResultsPolicy": "NONE",
+    "totalPagedResults": -1,
+    "remainingPagedResults": -1
+}
+```
+
+Each object class that you expect to be searchable will need to be handled within your search script. Different object classes can be associated with different data sources, have different attributes, or otherwise require different processing. This means, you will likely need to organize your code so that the result set for each object class is treated uniquely, using conditional logic. You can determine which object class data has been requested from the search operation by inspecting the `objectClass` binding and base your conditional logic on its content.
+
+If a search operation request is not supported in your script—for example, if an object class is defined in the connector schema, but is not handled in the script—the request should result in [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/UnsupportedOperationException.html) with an informative message.
+
+For the reasons discussed in the [Debugging Scripts > Try and Catch](#developing-debugging-scripts-try-catch) chapter, you should also handle any errors in your search script and respond with custom error messages.
+
+For example:
+
+`SearchScript.groovy`
+
+```groovy
+import groovy.json.JsonSlurper
+
+try {
+    def jsonSlurper = new JsonSlurper()
+
+    switch (objectClass.objectClassValue) {
+        case 'users':
+            def json = new File('/usr/local/src/users.json')
+            def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
+
+            resources.each { resource ->
+                handler {
+                    uid resource.id
+                    id resource.userName
+                    attribute 'active', !!resource.active
+                    attribute 'displayName', resource.displayName
+                    attribute 'givenName', resource.name.givenName
+                    attribute 'middleName', resource.name.middleName
+                    attribute 'familyName', resource.name.familyName
+                    attribute 'primaryEmail', (resource.emails.find { resource.primary })?.value
+                    attribute 'secondaryEmail', (resource.emails.find { !resource.primary })?.value
+                }
+            }
+
+            break
+        case 'groups':
+            def json = new File('/usr/local/src/groups.json')
+            def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
+
+            resources.each { resource ->
+                handler {
+                    uid resource.id
+                    attribute 'displayName', resource.displayName
+                    attribute 'members', resource.members
+                    attribute 'schemas', resource.schemas
+                }
+            }
+
+            break
+        default:
+            throw new UnsupportedOperationException(operation.name() + ' operation of type ' + objectClass.getObjectClassValue() + ' is not supported.')
+    }
+} catch (UnsupportedOperationException e) {
+    /**
+     * Preserve and re-throw the custom exception on unrecognized object class.
+     */
+
+    throw e
+} catch (e) {
+    log.error 'EXCEPTION: ' + e.message
+
+    throw new UnsupportedOperationException('Error occurred during ' + operation + ' operation')
+}
+```
+
+> As demonstrated in the example code, an object class can be identified by its type found with the `objectClass.getObjectClassValue()` method.
+>
+> In addition, [ObjectClass](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClass.html) class has some predefined types and corresponding constants that you could use in your code.
+>
+> For example:
+>
+> ```groovy
+> [ . . . ]
+>
+> switch (objectClass.getObjectClassValue()) {
+>     case ObjectClass.ACCOUNT_NAME:
+>
+> [ . . . ]
+> ```
+>
+> ```groovy
+> [ . . . ]
+>
+> switch (objectClass) {
+>     case ObjectClass.ACCOUNT:
+>
+> [ . . . ]
+> ```
+
+###### <a id="developing-scripted-connectors-groovy-requirements-search-filtering" name="developing-scripted-connectors-groovy-requirements-search-filtering"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script > Filtering Results
+
+[Back to Contents](#contents)
+
+When you invoke a search operation via IDM's APIs, you MUST provide search criteria using one of the following:
+
+* Resource ID
+* Query Definition
+
+Search arguments, such as a resource ID or an attribute value, will be used to populate the `filter` binding, which you will be able to use to extract search parameters; the `query` binding provides an easy way to do so, which will be demonstrated below.
+
+###### <a id="developing-scripted-connectors-groovy-requirements-search-filtering-id" name="developing-scripted-connectors-groovy-requirements-search-filtering-id"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script > Filtering Results > Read by Resource ID
+
+[Back to Contents](#contents)
+
+For a single specific resource, you can specify its ID as a [URL path](https://www.rfc-editor.org/rfc/rfc3986#section-3.3) argument:
+
+* `/openidm/system/<connection-name>/<object-class>/<ID>` (in a CREST [Read](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-read.html) request)
+
+* `openidm.read('system/<connection-name>/<object-class>/<ID>')` (in an [openidm.read(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) function call)
+
+For example:
+
+`IDM admin UI Browser Console`
+
+```javascript
+(async function () {
+    var data = await $.ajax('/openidm/system/groovy/users/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx');
+
+    console.log(JSON.stringify(data, null, 4));
+}());
+```
+
+A response from a successful read request made via IDM's APIs will be a single object JSON populated with data from the first resource handled by your search script.
+
+For example:
+
+```json
+{
+    "_id": "2819c223-7f76-453a-919d-413861904646",
+    "__NAME__": "bjensen",
+    "displayName": "Ms. Barbara J Jensen III",
+    "primaryEmail": "bjensen@example.com",
+    "middleName": "Jane",
+    "active": false,
+    "givenName": "Barbara",
+    "familyName": "Jensen"
+}
+```
+
+In order for it to match the specified ID, your script needs to implement filtering logic.
+
+* Using the `query` binding.
+
+    The `query` binding is a closure which returns a map of search parameters from the `filter` binding. In a search script, the passed in ID condition will become available as an entry in the map returned by the `query` closure.
+
+    For example:
+
+    `SearchScript.groovy`
+
+    ```groovy
+    println query()
+
+    [ . . . ]
+    ```
+
+    `RCS logs`
+
+    ```sh
+    [not:false, operation:EQUALS, left:__UID__, right:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx]
+    ```
+
+    In the [Query Definition](#developing-scripted-connectors-groovy-requirements-search-filtering-query-expression) chapter, it will be explained in details how the map returned by a `query()` call can be used for filtering data in response to either a read or a query request.
+
+* Using the `filter` binding.
+
+    You can use the [FrameworkUtil.getUidIfGetOperation(Filter filter)](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/FrameworkUtil.html#getUidIfGetOperation(org.identityconnectors.framework.common.objects.filter.Filter)) method to extract the passed in ID and apply it in the following way:
+
+    `SearchScript.groovy`
+
+    ```groovy
+    import groovy.json.JsonSlurper
+    import org.identityconnectors.framework.common.FrameworkUtil
+
+    def jsonSlurper = new JsonSlurper()
+
+    [ . . . ]
+
+                def json = new File('/usr/local/src/users.json')
+                def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
+
+                def uuid = FrameworkUtil.getUidIfGetOperation(filter)
+
+                if (uuid) {
+                    // GET the matching resource.
+                    def resource = resources.find {
+                        it.id == uuid.uidValue
+                    }
+
+                    if (resource) {
+                        handler {
+                            uid resource.id
+                            id resource.userName
+                            attribute 'active', !!resource.active
+                            attribute 'displayName', resource.displayName
+                            attribute 'givenName', resource.name.givenName
+                            attribute 'middleName', resource.name.middleName
+                            attribute 'familyName', resource.name.familyName
+                            attribute 'primaryEmail', (resource.emails.find { it.primary })?.value
+                            attribute 'secondaryEmail', (resource.emails.find { !it.primary })?.value
+                        }
+                    }
+                }
+
+    [ . . . ]
+    ```
+
+    In this example, requesting an existing ID will result in a `handler` call, and the response from IDM's APIs will be a single object JSON with the matching value in the "_id" field.
+
+    Requesting a non-existing ID will result in no `handler` call; hence, the response will contain a "Not Found" error:
+
+    ```json
+    {
+        "code": 404,
+        "reason": "Not Found",
+        "message": "Object xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx not found on system/groovy/users"
+    }
+    ```
+
+###### <a id="developing-scripted-connectors-groovy-requirements-search-filtering-query-expression" name="developing-scripted-connectors-groovy-requirements-search-filtering-query-expression"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script > Filtering Results > Query Definition
+
+[Back to Contents](#contents)
+
+To request a list of resources from a search operation, you can include a `_queryFilter` argument populated with a [query definition](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/queries.html). In your search script, the query definition can be evaluated as `true` to include a resource or as `false` to exclude it from the search result.
+
+In a [query request](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html) sent via IDM's REST, a query definition becomes a part of the URL query:
+
+`/openidm/system/<connection-name>/<object-class>?_queryFilter=<query-definition>`
+
+In an IDM script, the query definition will be included in the [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) params:
+
+```javascript
+openidm.query('system/<connection-name>/<object-class>', {
+    _queryFilter: '<query-definition>'
+});
+```
+
+The query definition will be used to set values of the `filter` and `query` bindings in your search script.
+
+In the simplest scenario, with `_queryFilter=true` (or `_queryFilter: 'true'`), both the `filter` object and the value returned by the `query` closure are `null`. This indicates (to the script) that all resources for the requested object class should satisfy the search criteria, and no filtering should be applied.
+
+> With `_queryFilter=false` (or `_queryFilter: 'false'`), the search script would not run at all, and an empty result set would be included in the response from IDM's APIs.
+
+To build a functional query definition, you need to follow conventions described in [Define and call data queries](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/queries.html) and CREST
+[Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html) docs.
+
+> Both documents describe generic IDM search operations; not everything described there can be used within ICF search scripts.
+>
+> For example, you might come across references to `_queryExpression` argument, which behaves similarly to `queryFilter` on a connector server, but `_queryExpression` is not officially supported in ICF context.
+
+Correctly built and accepted by IDM's APIs query definition will be used to populate the `filter` and the `query` bindings with the passed in search criteria:
+
+* Methods of a [filter](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/filter/Filter.html) object can be used to produce different representations of the search parameters, such as an SQL string or a map by accepting custom implementations of [FilterVisitor](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/filter/FilterVisitor.html).
+
+    > The scripted example of MySQL connector, which could be found under the `/samples` folder in an IDM installation or in an [ICF Connectors](https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse/scriptedsql-connector/src/test/resources/mysql_sample/SearchScript.groovy?at=1.5.20.13#98) repository, demonstrates how filter criteria can be converted into an SQL statement.
+
+* The `query` binding is a [Closure](https://groovy-lang.org/closures.html), which returns a map of search parameters from the `filter` object.
+
+    This makes calling the `query` closure an easy and the preferred way of extracting the search parameters if you don't have a specific [FilterVisitor](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/filter/FilterVisitor.html) for your source of data.
+
+    For example:
+
+    `SearchScript.groovy`
+
+    ```groovy
+    if (query) {
+        def queryMap = query()
+    }
+
+    [ . . . ]
+    ```
+
+    The map returned by a `query()` call has predictable structure and can be used for generating conditional logic for filtering the result of a search operation.
+
+Currently, the following expressions and operators are accepted:
+
+| Operation                | Expression                          | Example of `_queryFilter`                                    | `query()`                                                                                                                                                                                  |
+|--------------------------|-------------------------------------|---------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| presence (of property)   | \<pointer\> `pr`                    | givenName pr                                      | ['operation':'PRESENT', 'not':false, 'left':'givenName']                                                                                                                                   |
+| contains                 | \<pointer\> `co` \<value\>          | givenName co "bar"                                | ['not':false, 'operation':'CONTAINS', 'left':'givenName', 'right':'bar']                                                                                                                   |
+| equal to                 | \<pointer\> `eq` \<value\>          | givenName eq "Barbara"                            | ['not':false, 'operation':'EQUALS', 'left':'givenName', 'right':'Barbara']                                                                                                                 |
+| greater than             | \<pointer\> `gt` \<value\>          | givenName gt "Barbara"                            | ['not':false, 'operation':'GREATERTHAN', 'left':'givenName', 'right':'Barbara']                                                                                                            |
+| greater than or equal to | \<pointer\> `ge` \<value\>          | givenName ge "Barbara"                            | ['not':false, 'operation':'GREATERTHANOREQUAL', 'left':'givenName', 'right':'Barbara']                                                                                                     |
+| less than                | \<pointer\> `lt` \<value\>          | givenName lt "B"                                  | ['not':false, 'operation':'LESSTHAN', 'left':'givenName', 'right':'B']                                                                                                                     |
+| less than or equal to    | \<pointer\> `le` \<value\>          | givenName le "Barbara"                            | ['not':false, 'operation':'LESSTHANOREQUAL', 'left':'givenName', 'right':'Barbara']                                                                                                        |
+| starts with              | \<pointer\> `sw` \<value\>          | givenName sw "Bar"                                | ['not':false, 'operation':'STARTSWITH', 'left':'givenName', 'right':'Bar']                                                                                                                 |
+| ends with                | \<pointer\> `ew` \<value\>          | givenName ew "ara"                                | ['not':false, 'operation':'ENDSWITH', 'left':'givenName', 'right':'ara']                                                                                                                   |
+| AND                      | \<expression\> `and` \<expression\> | givenName eq "Barbara" and familyName eq "Jensen" | ['operation':'AND', 'left':['not':false, 'operation':'EQUALS', 'left':'givenName', 'right':'Barbara'], 'right':['not':false, 'operation':'EQUALS', 'left':'familyName', 'right':'Jensen']] |
+| OR                       | \<expression\> `or` \<expression\>  | givenName eq "Barbara" or familyName eq "Jensen"  | ['operation':'OR', 'left':['not':false, 'operation':'EQUALS', 'left':'givenName', 'right':'Barbara'], 'right':['not':false, 'operation':'EQUALS', 'left':'familyName', 'right':'Jensen']]  |
+| NOT                      | `!`(\<expression\>)                 | !(givenName eq "Barbara")                         | ['not':true, 'operation':'EQUALS', 'left':'givenName', 'right':'Barbara']                                                                                                                  |
+| Literal                  | `true`\|`false`                     | true                                              | null                                                                                                                                                                                       |
+
+Each query expression represents a single operation. Individual query expressions can be used in an `AND`/`OR` clause and grouped with parenthesis.
+
+The value returned by a `query()` call is a map describing an operation. In a complex query definition, the left and right parts of an operation may consist of nested maps, where each map introduces a single operation.
+
+For example:
+
+`?_queryFilter=(givenName eq "Barbara" or givenName eq "Jane") and familyName eq "Jensen"`
+
+The `query()` result with extra whitespace for readability:
+
+```groovy
+[
+    'operation':'AND',
+    'left':[
+        'operation':'OR',
+        'left':[
+            'not':false,
+            'operation':'EQUALS',
+            'left':'givenName',
+            'right':'Barbara'
+        ],
+        'right':[
+            'not':false,
+            'operation':'EQUALS',
+            'left':'givenName',
+            'right':'Jane'
+        ]
+    ],
+    'right':[
+        'not':false,
+        'operation':'EQUALS',
+        'left':'familyName',
+        'right':'Jensen'
+    ]
+]
+```
+
+You can use this standard representation of the search parameters to dynamically generate conditional logic for filtering the result, which is demonstrated in the [Example Search Script](#developing-scripted-connectors-groovy-requirements-search-example) chapter.
+
+Your query definition will be validated _before_ the search script is executed and _independently_ for each expression; as a result, you might receive the following errors:
+
+* Except when checked for presence, unrecognized pointers (that is, attribute references unaccounted in the connector schema) will result in an error, even if you checked for presence first in your query definition.
+
+    For example:
+
+    `_queryFilter=firstName pr and firstName eq "Barbara"`
+
+    ```json
+    {"code":400,"reason":"Bad Request","message":"Attribute firstName does not exist as part of ObjectClass: users"}
+    ```
+
+* If you try to use an unrecognized expression or an unsupported operator, you will receive a 4xx error.
+
+    For example:
+
+    ```json
+    {"code":400,"reason":"Bad Request","message":"ExtendedMatchFilter is not supported"}
+    ```
+
+    ```json
+    {"code":404,"reason":"Not Found","message":"ContainsAllValuesFilter transformation is not supported"}
+    ```
+
+    ```json
+    {"code":404,"reason":"Not Found","message":"Complex filter not supported"}
+    ```
+
+* If you use unrecognized arguments starting with an underscore, you will receive a 400 error.
+
+    For example:
+
+    ```json
+    {"code":400,"reason":"Bad Request","message":"Unrecognized request parameter '_query'"}
+    ```
+
+    Any additional arguments in the URL query that do not start with an underscore will be ignored and not present in the search script context.
+
+###### <a id="developing-scripted-connectors-groovy-requirements-search-paging" name="developing-scripted-connectors-groovy-requirements-search-paging"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script > Paging and Sorting
+
+[Back to Contents](#contents)
+
+The [Define and call data queries](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/queries.html#paging-query-results) document describes how your search script SHOULD react to additional sorting and paging arguments provided in the request. You can only use paging arguments along with a query; they will not be accepted (nor needed) when processing a read request.
+
+To implement reliable paging, you need to make sure no valid resources are skipped as you iterate through the pages. One common way to achieve that is to sort the result on a stable attribute, and to use a value-based paging strategy that refers to the last value for the given page from that attribute in order to establish a consistent reference for the next page.
+
+To request paging, you need to specify page size.
+
+* <a id="developing-scripted-connectors-groovy-requirements-search-paging-size" name="developing-scripted-connectors-groovy-requirements-search-paging-size"></a>Page Size
+
+    [Back to Contents](#contents)
+
+    Number of resources each page should be limited to is provided in a `_pageSize` argument:
+
+    * `&_pageSize=<positive-integer>` (in a CREST [Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html))
+
+    * `_pageSize: <positive-integer>` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) params)
+
+    In a search script context, this parameter becomes available as the `options.pageSize` binding. Presence of a positive value in the `options.pageSize` parameter indicates that paging is requested.
+
+* <a id="developing-scripted-connectors-groovy-requirements-search-paging-sorting" name="developing-scripted-connectors-groovy-requirements-search-paging-sorting"></a>Sorting
+
+    [Back to Contents](#contents)
+
+    You might be able to rely on the order your resources are received from the target backend, but sorting your resources explicitly, in the script will ensure consistent result.
+
+    A request for search operation may contain sorting criteria in a `_sortKeys` argument:
+
+    * `&_sortKeys=<pointer>,<pointer> . . . ` (in a CREST [Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html))
+
+    * `_sortKeys: [' <pointer>', '<pointer>' . . . ]` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) params)
+
+    By default, the order in which each sort key is to be applied is ascending. You can change it by prefixing a pointer with a `-` (minus) sign in your request.
+
+    For example:
+
+    `&_sortKeys=-__NAME__`
+
+    In the search script context, the sorting criteria becomes available as the `options.sortKeys` binding, which is an array of the [SortKey](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SortKey.html) class instances.
+
+    The sorting information might not be provided in the request, or it could reference non-unique identifiers making sorting by them inconsistent and unreliable. Therefore, if paging is requested, you should always do the last sorting by the object class unique identifier, its `_id` property; and accordingly, add the corresponding `SortKey` to the array.
+
+    For example:
+
+    `SearchScript.groovy`
+
+    ```groovy
+    [ . . . ]
+
+    def sortKeys = options.sortKeys
+    if (sortKeys != null) {
+        sortKeys += new SortKey('__UID__', true)
+    }
+
+    [ . . . ]
+    ```
+
+    > The `options.sortKeys` binding is not present on read requests.
+    >
+    > If `_id` argument were included in a request, it would be translated into ICF-named `__UID__` parameter in the search script context. Hence, to treat all attribute references consistently, the `__UID__` name is used as the SortKey field in the last example.
+
+    You can use accessors of the [SortKey](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SortKey.html) class to retrieve the attribute name and the direction by which you need to sort your result.
+
+    For example:
+
+    `SearchScript.groovy`
+
+    ```groovy
+    /**
+     * Apply sort keys in reverse order, so that sorting by multiple keys is possible.
+     */
+    sortKeys.reverse().each { sortKey ->
+        resources = resources.sort { a, b ->
+            def valueA = a[sortKey.field]
+            def valueB = b[sortKey.field]
+
+            if (sortKey.isAscendingOrder) {
+                valueA.compareToIgnoreCase(valueB)
+            } else {
+                valueB.compareToIgnoreCase(valueA)
+            }
+        }
+    }
+    ```
+
+* <a id="developing-scripted-connectors-groovy-requirements-search-paging-tracking" name="developing-scripted-connectors-groovy-requirements-search-paging-tracking"></a>Tracking Position in Paged Results
+
+    [Back to Contents](#contents)
+
+    If the client has already received some paged result, it will need to indicate where to start next page in its requests for a paged search operation.
+
+    Either `_pagedResultsCookie` or `_pagedResultsOffset` argument can be used for this purpose.
+
+    > Currently, both arguments can be provided simultaneously in IDM scripts; hence, you script should make application of these parameters mutually exclusive.
+
+    Note that for [reconciliation](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/manage-recon.html) IDM only uses `_pagedResultsCookie`; so, if you are building a connector specifically to work with reconciliation, that option should be the focus of the implementation.
+
+    * `_pagedResultsCookie`
+
+        If paging is requested, and your script is not responding with the last page, you should inform the client about the last handled resource. This is done by including the last resource unique identifier as the value of `pagedResultsCookie` property in an instance of [SearchResult](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SearchResult.html) and returning the instance from the script.
+
+        Having received the reference to the last resource returned from a search operation, the client can include it in its next request—to indicate where the next page needs to start. In order to avoid any translation errors in this exchange, the value of the unique identifier should be base-64 and URL-encoded.
+
+        For example (where `unhandledPagedResultsCount` is a calculated value based on tracking the last returned resource):
+
+        `SearchScript.groovy`
+
+        ```groovy
+        import org.identityconnectors.framework.common.objects.SearchResult
+
+        def pagedResultsCookie
+
+        [ . . . ]
+
+        if (resources.size() && unhandledPagedResultsCount) {
+            pagedResultsCookie = resources?.last().key.bytes.encodeBase64Url().toString()
+        }
+
+        [ . . . ]
+
+        new SearchResult(
+            pagedResultsCookie,
+            -1
+        )
+        ```
+
+        > IDM does not support [SearchResult.CountPolicy](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SearchResult.CountPolicy.html) for `/system` endpoints; hence, you cannot leverage the `SearchResult(java.lang.String pagedResultsCookie, SearchResult.CountPolicy totalPagedResultsPolicy, int totalPagedResults, int remainingPagedResults)` constructor. In effect, you can only respond with `pagedResultsCookie` from your scripted connector.
+
+        The client will receive this information as a part of the response from the search operation request.
+
+        For example:
+
+        ```json
+        {
+            "result": [
+                [ . . . ]
+            ],
+            "resultCount": 8,
+            "pagedResultsCookie": "MjgxOWMyMjMtN2Y3Ni00NTNhLTkxOWQtNDEzODYxOTA0NjQ2",
+            "totalPagedResultsPolicy": "NONE",
+            "totalPagedResults": -1,
+            "remainingPagedResults": -1
+        }
+        ```
+
+        If the client wants to proceed with the next page, it can add this last resource reference to its next request in a `_pagedResultsCookie` argument:
+
+        * `&_pagedResultsCookie=<paged-results-cookie>` (in a CREST [Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html))
+
+        * `_pagedResultsCookie: <paged-results-cookie>` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) params)
+
+        The search script will receive this value in the `options.pagedResultsCookie` parameter, and will need to decode it to determine the last ID position in the source data to start the next page from.
+
+        For example:
+
+        `SearchScript.groovy`
+
+        ```groovy
+        [ . . . ]
+
+        lastHandledIndex = resources.findIndexOf { resource ->
+            resource.id == new String(options.pagedResultsCookie.decodeBase64Url())
+        }
+
+        [ . . . ]
+        ```
+
+        When the last page is returned, `pagedResultsCookie` in the [SearchResult](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SearchResult.html) instance returned from the script should not be assigned any value, making the "pagedResultsCookie" field in the search operation response populated with `null`, which will conclude the paging cycle.
+
+    * `_pagedResultsOffset`
+
+        When a positive `_pagedResultsOffset` value is received, the search script is to discard the number of resources indicated by the argument value from the beginning of the search operation result.
+
+        For example:
+
+        `SearchScript.groovy`
+
+        ```groovy
+        [ . . . ]
+
+        if (options.pagedResultsOffset) {
+            resources = resources.drop options.pagedResultsOffset
+        }
+
+        [ . . . ]
+        ```
+
+        In this case, `pagedResultsCookie` still needs to be sent back to the client to make it aware of the last position where the last page ended; thus, making it an option for the client to start paging from this position.
+
+The [Example Search Script](#developing-scripted-connectors-groovy-requirements-search-example) chapter demonstrates applying sorting and paging parameters in a Groovy Toolkit connector. In the example script, look for code and comments associated with `options.pageSize`, `options.sortKeys`, `options.pagedResultsCookie`, and `options.pagedResultsOffset`.
+
+#####  <a id="developing-scripted-connectors-groovy-requirements-search-attributes" name="developing-scripted-connectors-groovy-requirements-search-attributes"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script > Attributes to Get
+
+[Back to Contents](#contents)
+
+By default, all handled attributes that are defined in the connector schema will be included in the result of a search operation, except the ones that are marked with the `NOT_RETURNED_BY_DEFAULT` [flag](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.Flags.html). In a request for search operation, either read or query, you can specify what attributes should be included in the response by providing a comma-separated list of attribute names in a `_fields` argument:
+
+* `&_fields=pointer[,pointer . . . ]` (in a CREST [Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html))
+
+* `[ 'pointer', . . . ]` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) _fields_, which is the third and last argument of this method)
+
+Attributes not matching populated `_fields` value will be automatically excluded from the search operation response with one exception: a response from IDM's REST will always include the `_id` attribute.
+
+For example:
+
+`?_queryFilter=true&_fields=__NAME__`
+
+```json
+{
+    "result": [
+        {
+            "_id": "2819c223-7f76-453a-919d-413861904646",
+            "__NAME__": "bjensen"
+        },
+        [ . . . ]
+    ],
+    "resultCount": 19,
+    "pagedResultsCookie": null,
+    "totalPagedResultsPolicy": "NONE",
+    "totalPagedResults": -1,
+    "remainingPagedResults": -1
+}
+```
+
+To reference all attributes that are included in a response by default, you can use a `*` (asterisk) wildcard.
+
+Then, the `_fields` argument can be used for including attributes marked with the `NOT_RETURNED_BY_DEFAULT` [flag](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/AttributeInfo.Flags.html).
+
+For example:
+
+`?_queryFilter=true&_fields=*,secondaryEmail`
+
+```json
+{
+    "result": [
+        {
+            "_id": "2819c223-7f76-453a-919d-413861904646",
+            "__NAME__": "bjensen",
+            "displayName": "Ms. Barbara J Jensen III",
+            "primaryEmail": "bjensen@example.com",
+            "middleName": "Jane",
+            "active": false,
+            "givenName": "Barbara",
+            "familyName": "Jensen",
+            "secondaryEmail": "babs@jensen.org"
+        },
+        [ . . . ]
+   ],
+    "resultCount": 19,
+    "pagedResultsCookie": null,
+    "totalPagedResultsPolicy": "NONE",
+    "totalPagedResults": -1,
+    "remainingPagedResults": -1
+}
+```
+
+In the search script context, the list of requested attributes will be available as `options.attributesToGet` parameter, which is an array of Strings.
+
+For example:
+
+`/openidm/system/groovy/users/2819c223-7f76-453a-919d-413861904646?_fields=__NAME__`
+
+`SearchScript.groovy`
+
+```groovy
+println options.attributesToGet
+
+[ . . . ]
+```
+
+`RCS logs`
+
+```sh
+[__NAME__]
+```
+
+If you have an expensive attribute to process, you might want to consult this list and only process the fields that have been requested.
+
+If the `_fields` argument is not included in the request or is empty, all attributes that are included by default will be present in the array.
+
+For example:
+
+`/openidm/system/groovy/users/2819c223-7f76-453a-919d-413861904646?_fields=`
+
+`RCS logs`
+
+```sh
+['displayName', 'givenName', 'familyName', 'active', 'middleName', '__NAME__', 'primaryEmail']
+```
+
+> Currently, setting the "enableAttributesToGetSearchResultsHandler" key to `false` in a scripted Groovy connector configuration does not change the described in this chapter default behavior driven by the `_fields` argument.
+>
+> ```json
+> {
+>     "connectorRef": {
+>         "connectorHostRef": "rcs",
+>         "bundleVersion": "1.5.20.15",
+>         "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
+>         "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
+>     },
+>     "resultsHandlerConfig": {
+>         "enableAttributesToGetSearchResultsHandler": true,
+>         [ . . . ]
+>     },
+>     [ . . . ]
+> }
+> ```
+
+#####  <a id="developing-scripted-connectors-groovy-requirements-search-example" name="developing-scripted-connectors-groovy-requirements-search-example"></a>Scripted Connectors > Groovy Connector > Requirements > Search Script > Example Search Script
+
+[Back to Contents](#contents)
+
+The example below demonstrates how some of the conventions described in [Define and call data queries](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/queries.html) and CREST
+[Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html) docs can be translated into a script.
+
+The example script handles requests for two object classes outlined in the [Example Schema Script](#developing-scripted-connectors-groovy-requirements-schema-example) chapter. Full search implementation accepting filtering, sorting, and paging parameters is demonstrated only for the `users` object class.
+
+In order to apply search criteria dynamically and universally, the following considerations have been addressed in the example script:
+
+* Different query definitions will need to be handled in the same script.
+
+    If you don't have a [FilterVisitor](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/filter/FilterVisitor.html) for your source of data, you will need to build a query generator, which will consume the dynamic input returned by a `query()` call and use it to produce conditional logic that can be applied to your data source.
+
+* A connector can define and handle requests for multiple object classes.
+
+    The ICF framework conventionally uses `__UID__` and `__NAME__` as a resource [unique identifier](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Uid.html) and its [user-friendly identifier](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Name.html), respectively. In particular, this is how both attributes will appear in query parameters. In the closure passed into the `handler` method, the respective attributes are represented as `uid` and `id`.
+
+    In a remote system the corresponding identifiers could be found under different properties for different object classes. Thus, it might be beneficial to map the ICF names to the object class-specific attributes, and use this map as a reference in your filtering and handling logic.
+
+    For example:
+
+    ```groovy
+    def fieldMap = [
+        __UID__: 'id',
+        __NAME__: 'userName'
+    ]
+    ```
+
+    > The [unique identifier](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Uid.html) is returned as the "_id" key in a search operation result. Whether you use its value in the path of a read request or as an `_id` argument in a query request, in the map returned by a `query()` call the argument will be converted into ICF's `__UID__` parameter.
+    >
+    > For example:
+    >
+    > `/openidm/system/groovy/users/2819c223-7f76-453a-919d-413861904646`
+    >
+    > `RCS logs`
+    >
+    > ```sh
+    >  ['not':false, 'operation':'EQUALS', 'left':'__UID__', 'right':'2819c223-7f76-453a-919d-413861904646']
+    > ```
+
+
+
+* In order for search arguments to be accepted by the APIs, the corresponding attribute needs to be defined as a primitive type in the connector's schema.
+
+    In the [Example Schema](#developing-scripted-connectors-groovy-requirements-schema-example) script, properties of the complex attributes have been defined as individual attributes in the `users` object class. The search script has to accommodate this schema by obtaining corresponding individual properties from the `users` data. This also presents an opportunity to align the search operation result with any validation policies implemented in the target system.
+
+Below find an example search script for a simple Groovy connector that gets data from a JSON file, but similarly could handle any other list of objects that can be converted into an array of maps. The script implements all the functionality that have been discussed in this chapter.
+
+The example script serves illustration purposes; modify and optimize it for your use.
+
+`SearchScript.groovy`
+
+```groovy
+/**
+ * DISCLAIMER
+ * The sample code described herein is provided on an "as is" basis, without warranty of any kind,
+ * to the fullest extent permitted by law. ForgeRock does not warrant or guarantee the individual success
+ * developers may have in implementing the sample code on their development platforms or in production
+ * configurations. ForgeRock does not warrant, guarantee or make any representations regarding the use, results
+ * of use, accuracy, timeliness or completeness of any data or information relating to the sample code.
+ * ForgeRock disclaims all warranties, expressed or implied, and in particular, disclaims all warranties of
+ * merchantability, and warranties related to the code, or any service or software related thereto.
+ * ForgeRock shall not be liable for any direct, indirect or consequential damages or costs of any type arising
+ * out of any action taken by you or others related to the sample code.
+ */
+
+/**
+ * @file Provide an example search script for use with Groovy Toolkit connectors.
+ * @author Konstantin.Lapine@forgerock.com
+ * @version 0.1.0
+ * Defined variables:
+ * operation        org.forgerock.openicf.connectors.groovy.OperationType
+ *                  The SEARCH operation type.
+ * configuration    org.forgerock.openicf.connectors.groovy.ScriptedConfiguration
+                    The connector configuration properties.
+ *                  @see {@link https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html#groovy-connector-configuration}
+ * filter           org.identityconnectors.framework.common.objects.filter.Filter
+ *                  The search parameters.
+ * query            groovy.lang.Closure
+ *                  Returns a map of search parameters from the filter object.
+ * options          org.identityconnectors.framework.common.objects.OperationOptions
+ *                  Additional search parameters.
+ * objectClass      org.identityconnectors.framework.common.objects.ObjectClass
+ *                  Represents the requested object class.
+ *                  @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClass.html}
+ *                  @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/OperationOptions.html}
+ * handler          groovy.lang.Closure
+ *                  Adds a resource to the search operation result.
+ * log              org.identityconnectors.common.logging.Log
+ *                  Logging facility.
+ *                  @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html}
+ * Returns org.identityconnectors.framework.common.objects.SearchResult
+ * @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SearchResult.html}
+ * References:
+ * @see {@link https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-search.html}
+ * @see {@link https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/queries.html}
+ * @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/index.html}
+ * @see {@link https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse?at=refs%2Ftags%2F1.5.20.14}
+ * @see {@link https://docs.groovy-lang.org/}
+ */
+
+import org.identityconnectors.framework.common.objects.SearchResult
+import groovy.json.JsonSlurper
+
+try {
+    /**
+     * Identify the ICF operation in RCS logs.
+     */
+    log.info 'Script: ' + configuration.scriptRoots + '/' + configuration.searchScriptFileName + ' Operation: ' + operation
+
+    def jsonSlurper = new JsonSlurper()
+
+    /**
+     * Call query closure to get a map of search parameters that can be used in a query generator.
+     */
+    def queryMap = query()
+
+    /**
+     * Declare a condition template to be evaluated for each resource.
+     * Include every resource by default.
+     */
+    def conditionTemplate = 'true'
+
+    /**
+     * Use Groovy shell for evaluating the condition template with a placeholder for dynamically supplied data.
+     */
+    def shellData = new Binding()
+    def shell = new GroovyShell(shellData)
+
+    /**
+     * Declare a closure for generating queries, so that it can call itself (recursively).
+     */
+    def queryGenerator
+
+    /**
+     * Define default sorting by the unique identifier to ensure reliable paging.
+     * @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SortKey.html}
+     * @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Uid.html}
+     */
+    def sortKeys = options.sortKeys
+    if (sortKeys != null) {
+        sortKeys += new SortKey('__UID__', true)
+    }
+
+    /**
+     * Define defaults for paging.
+     */
+    def pagedResultsCookie
+    // def remainingPagedResults
+    def lastHandledIndex = -1
+    def totalPagedResults
+
+    /**
+     * Parse the search criteria if it has been provided,
+     * and generate a condition template to evaluate against a resource.
+     */
+    if (queryMap) {
+        /**
+         * Create a condition template to dynamically evaluate against a resource data.
+         * @param query             java.util.LinkedHashMap
+         *                          Represents a query operation,
+         *                          where left and right parts of the condition could be other query operation maps.
+         * @param fieldMap          java.util.LinkedHashMap
+         *                          Contains query parameters mapped to an object class-specific attributes.
+         * @return                  java.lang.String
+         *                          Contains the condition template.
+         */
+        queryGenerator = { query, fieldMap=[:] ->
+            /**
+             * Parse each query operation individually
+             * and combine them in AND/OR clause(s) if requested.
+             */
+            if (query.operation == 'AND' || query.operation == 'OR') {
+                def operation = '&&'
+                if (query.operation == 'OR') {
+                    operation = '||'
+                }
+                return '(' + queryGenerator(query.right, fieldMap) + ' ' + operation + ' ' + queryGenerator(query.left, fieldMap) + ')'
+            } else {
+                def objectClassType = objectClass.objectClassValue
+                def argumentValue = query.right
+                def not = query.not ? '!' : ''
+                def template
+
+                def attributeName = query.left
+                if (fieldMap[attributeName]) {
+                    attributeName = fieldMap[attributeName]
+                }
+
+                /**
+                 * Ensure the resource attribute is evaluated to a string value
+                 * for string comparisons with the search arguments.
+                 */
+                attributeTemplate = attributeName + '.toString()'
+
+                switch (query.operation) {
+                    case 'PRESENT':
+                        template = "$not(binding.hasVariable('${attributeName}'))"
+                        break
+                    case 'EQUALS':
+                        template = "$not(${attributeTemplate}.equalsIgnoreCase('$argumentValue'))"
+                        /**
+                         * For case-sensitive comparison, you can use the equals(Object object) method or the equality operator.
+                         * @example
+                         * template = "$not($attributeTemplate == '$argumentValue')"
+                         */
+                        break
+                    case 'GREATERTHAN':
+                        template = "$not(${attributeTemplate}.compareToIgnoreCase('$argumentValue') > 0)"
+                        break
+                    case 'GREATERTHANOREQUAL':
+                        template = "$not(${attributeTemplate}.compareToIgnoreCase('$argumentValue') >= 0)"
+                        break
+                    case 'LESSTHAN':
+                        template = "$not(${attributeTemplate}.compareToIgnoreCase('$argumentValue') < 0)"
+                        break
+                    case 'LESSTHANOREQUAL':
+                        template = "$not(${attributeTemplate}.compareToIgnoreCase('$argumentValue') <= 0)"
+                        break
+                    case 'CONTAINS':
+                        template = "$not(${attributeTemplate}.containsIgnoreCase('$argumentValue'))"
+                        break
+                    case 'ENDSWITH':
+                        template = "$not(${attributeTemplate}.endsWithIgnoreCase('$argumentValue'))"
+                        /**
+                         * Alternatively, you could use a regular expression.
+                         * @example
+                         * template = "$not(($attributeTemplate =~ /\\w*$argumentValue\$/).size())"
+                         */
+                        break
+                    case 'STARTSWITH':
+                        template = "$not(${attributeTemplate}.startsWithIgnoreCase('$argumentValue'))"
+                }
+
+                return template
+            }
+        }
+    }
+
+    /**
+     * Sort an object class data.
+     * Apply the sort keys to in reverse order, so that sorting by multiple keys is possible.
+     *
+     * @param resources         java.util.ArrayList
+     *                          A list of org.apache.groovy.json.internal.LazyMap instances,
+     *                          each representing a resource object.
+     * @param resourceSortKeys  java.util.ArrayList
+     *                          A list of object class-specific org.identityconnectors.framework.common.objects.SortKey instances.
+     *                          @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SortKey.html}
+     * @param getResourceData   groovy.lang.Closure
+     *                          Returns data for an individual resource.
+     * @return                  java.util.ArrayList
+     *                          Sorted list of org.apache.groovy.json.internal.LazyMap instances.
+     */
+    sortResources = { resources, resourceSortKeys, getResourceData ->
+        resourceSortKeys.reverse().each { sortKey ->
+            resources = resources.sort { a, b ->
+                def resourceDataA = getResourceData(a)
+                def resourceDataB = getResourceData(b)
+
+                def valueA = resourceDataA[sortKey.field].toString()
+                def valueB = resourceDataB[sortKey.field].toString()
+
+                if (sortKey.isAscendingOrder) {
+                    valueA.compareToIgnoreCase(valueB)
+                } else {
+                    valueB.compareToIgnoreCase(valueA)
+                }
+            }
+        }
+
+        resources
+    }
+
+    /**
+     * Handle source data for each supported object class.
+     * @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClass.html}
+     */
+    switch (objectClass.objectClassValue) {
+        case 'users':
+            /**
+             * Use sample data in JSON format to produce the result of the search operation.
+             */
+            def json = new File('/usr/local/src/users.json')
+            def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
+
+            /**
+             * Map ICF names to this object class attribute names.
+             */
+            def fieldMap = [
+                '__UID__': 'id',
+                '__NAME__': 'userName'
+            ]
+
+            /**
+             * Get a resource data in the format matching the object class schema.
+             *
+             * @param resource  org.apache.groovy.json.internal.LazyMap
+             *                  Represents a resource object.
+             * @return          java.util.LinkedHashMap
+             *                  Represents a resource.
+             */
+            def getResourceData = { resource ->
+                [
+                    id: resource.id,
+                    userName: resource.userName,
+                    active: !!resource.active,
+                    displayName: resource.displayName,
+                    givenName: resource.name.givenName,
+                    middleName: resource.name.middleName,
+                    familyName: resource.name.familyName,
+                    primaryEmail: (resource.emails.find { it.primary })?.value,
+                    secondaryEmail: (resource.emails.find { !it.primary })?.value
+                ]
+            }
+
+            /**
+             * Parse the query data and get back a condition template
+             * for evaluating against a resource in GroovyShell.
+             */
+            if (queryGenerator) {
+                conditionTemplate = queryGenerator queryMap, fieldMap
+            }
+
+            /**
+             * Filter resources.
+             */
+            resources = resources.findAll { resource ->
+                def resourceData = getResourceData(resource)
+
+                /**
+                 * Provide dynamic, resource-specific content for the conditional template.
+                 */
+                resourceData.each {
+                    shellData.setVariable(it.key, it.value)
+                }
+
+                /**
+                 * Exclude resources that do not meet search criteria from the search result.
+                 */
+                shell.evaluate conditionTemplate
+            }
+
+            /**
+             * Sort resources if sorting and/or paging were requested.
+             */
+            if (options.sortKeys || (options.pageSize && options.pageSize > 0)) {
+                /**
+                 * Replace ICF names in sort keys with this object class attribute names.
+                 */
+                def objectClassSortKeys = sortKeys.collect { sortKey ->
+                    def field = fieldMap[sortKey.field]
+                    if (!field) {
+                        field = sortKey.field
+                    }
+                    new SortKey(field, sortKey.isAscendingOrder)
+                }
+
+                resources = sortResources resources, objectClassSortKeys, getResourceData
+            }
+
+            /**
+             * Page resources.
+             */
+
+            /**
+             * Capture the total resource count under the current filtering criteria.
+             */
+            totalPagedResults = resources.size()
+
+            if (options.pageSize && options.pageSize > 0) {
+                /**
+                 * Skip resources that have been included in previous pages or explicitly excluded.
+                 */
+                if (options.pagedResultsCookie) {
+                    /**
+                     * Get position of the last handled resource in the sorted result.
+                     */
+                    lastHandledIndex = resources.findIndexOf { resource ->
+                        resource[fieldMap['__UID__']] == new String(options.pagedResultsCookie.decodeBase64Url())
+                    }
+
+                    /**
+                     * Discard already handled resources from the result.
+                     */
+                    resources = resources.drop lastHandledIndex + 1
+                } else if (options.pagedResultsOffset) {
+                    /**
+                     * Discard resources from the beginning of the result set according to the requested offset.
+                     */
+                    resources = resources.drop options.pagedResultsOffset
+                }
+
+                /**
+                 * Get resources for the requested page size.
+                 */
+                resources = resources.subList 0, Math.min(options.pageSize, resources.size())
+            }
+
+            /**
+             * Add each retained resource to the result of search operation.
+             */
+            resources.eachWithIndex { resource, index ->
+                def resourceData = getResourceData(resource)
+
+                /**
+                 * Call handler for each resource.
+                 */
+                handler {
+                    uid resourceData[fieldMap['__UID__']]
+                    id resourceData[fieldMap['__NAME__']]
+                    attribute 'active', resourceData.active
+                    attribute 'displayName', resourceData.displayName
+                    attribute 'givenName', resourceData.givenName
+                    attribute 'middleName', resourceData.middleName
+                    attribute 'familyName', resourceData.familyName
+                    attribute 'primaryEmail', resourceData.primaryEmail
+                    attribute 'secondaryEmail', resourceData.secondaryEmail
+                }
+                // remainingPagedResults = resources.size() - (index + 1)
+            }
+
+            /**
+             * Set pagedResultsCookie if there are still paged resources to be handled.
+             */
+            if (resources.size() && totalPagedResults - (lastHandledIndex + 1 + resources.size())) {
+                pagedResultsCookie = resources?.last()[fieldMap['__UID__']].bytes.encodeBase64Url().toString()
+            }
+
+            break
+        case 'groups':
+            def json = new File('/usr/local/src/groups.json')
+            def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
+
+            /**
+             * Map ICF names to this object class attribute names.
+             */
+            def fieldMap = [
+                '__UID__': 'id'
+            ]
+
+            /**
+             * Parse the query data and get back a condition template
+             * for evaluating against a resource in GroovyShell.
+             */
+            if (queryGenerator) {
+                conditionTemplate = queryGenerator queryMap, fieldMap
+            }
+
+            /**
+             * Filter resources.
+             */
+            resources = resources.findAll { resource ->
+                /**
+                 * Provide dynamic, resource-specific content for the conditional template.
+                 */
+                resource.each {
+                    shellData.setVariable(it.key, it.value)
+                }
+
+                /**
+                 * Exclude resources that do not meet search criteria from the search result.
+                 */
+                shell.evaluate conditionTemplate
+            }
+
+            /**
+             * Do not implement sorting or paging for groups.
+             */
+
+            /**
+             * Add each retained resource to the result of search operation.
+             */
+            resources.each { resource ->
+                handler {
+                    uid resource[fieldMap['__UID__']]
+                    attribute 'displayName', resource.displayName
+                    attribute 'members', resource.members
+                    attribute 'schemas', resource.schemas
+                }
+            }
+
+            break
+        default:
+            throw new UnsupportedOperationException(operation.name() + ' operation of type: ' + objectClass.getObjectClassValue() + ' is not supported.')
+    }
+
+    /**
+     * Return the last handled resource reference of the current search operation.
+     * Only pagedResultsCookie is currently supported for a Groovy Toolkit connector;
+     * hence, the required remainingPagedResults argument is populated with -1.
+     * @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SearchResult.html}
+     */
+    new SearchResult(
+        pagedResultsCookie,
+        -1
+    )
+} catch (UnsupportedOperationException e) {
+    log.error e.message
+
+    /**
+     * Preserve and re-throw the custom exception on unrecognized object class.
+     */
+    throw e
+} catch (e) {
+    log.error e.message
+
+    throw new UnsupportedOperationException('Error occurred during ' + operation + ' operation')
+}
+```
+
+##### <a id="developing-scripted-connectors-groovy-registering-connection" name="developing-scripted-connectors-groovy-registering-connection"></a>Scripted Connectors > Registering Connection
+
+[Back to Contents](#contents)
+
+###### <a id="developing-scripted-connectors-groovy-registering-connection-platform-ui" name="developing-scripted-connectors-groovy-registering-connection-platform-ui"></a>Scripted Connectors > Registering Connection > Platform UI
+
+[Back to Contents](#contents)
+
+In the Platform admin UI, you can [Register an application](https://backstage.forgerock.com/docs/idcloud/latest/app-management/register-an-application.html) and configure a [Scripted Groovy](https://backstage.forgerock.com/docs/idcloud/latest/app-management/provision-an-application.html#scripted_groovy) connection on the application's Provisioning tab.
+
+From the Provisioning tab, you will be able to manage your connection, see the remote object classes and data, and apply outbound and/or inbound mappings.
+
+> A connection created in this way will also appear in the IDM admin UI, but changes made in IDM native console might not apply correctly to the Platform application.
+
+##### <a id="developing-scripted-connectors-groovy-registering-connection-rest" name="developing-scripted-connectors-groovy-registering-connection-rest"></a>Scripted Connectors > Registering Connection > IDM's REST
+
+[Back to Contents](#contents)
+
+You can register and manage your scripted Groovy connection over IDM's REST. This way, you will miss the new Application Management features available in the Platform admin UI. You will, however, be able to manage your connection in a reproducible, automated way and in conjunction with your script development.
+
+As described in the [Configure connectors over REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-connector.html#connector-wiz-REST) doc, in order to register a connection, you will need to perform the following steps:
+
+1. Find a connector reference in data returned from `/openidm/system?_action=availableConnectors`
+
+1. Using the connector reference, request the connector's core configuration from `/openidm/system?_action=createCoreConfig`.
+
+1. Update the core configuration with your RCS specifics, and get the full connector configuration from `/openidm/system?_action=createFullConfig`.
+
+    Optionally, update the full connector configuration with entries not provided by default, such as ["systemActions"](#developing-connector-configuration-system-actions).
+
+1. Using the full configuration, register a connection at its designated configuration endpoint: `/openidm/config/provisioner.openicf/<connection-name>`.
+
+As explained in the [Scripted Connectors > Groovy Connector > Requirements](#developing-scripted-connectors-groovy-requirements) chapter, in the Step 3 of this process, you will need at a minimum provide the following references under the "configurationProperties" key:
+
+* "scriptRoots"
+
+* "schemaScriptFileName"
+
+* "searchScriptName"
+
+Once you have your connection configuration in JSON format, either from the Step 4 or from an existing connection configuration endpoint, you can save it in a file, track it in your source, and read it from a script.
+
+For example:
+
+`register-connection.sh`
+
+```sh
+# @param {string} $1 - Path to the provisioner configuration file.
+# @param {string} $2 - Name of the connection, as (it will be) registered at /openidm/system/<connection-name>.
+curl \
+--header "Authorization: $AUTHORIZATION_HEADER_VALUE" \
+--header "Accept-API-Version: resource=1.0" \
+--header "Content-Type: application/json" \
+--request PUT \
+--data "$(cat $1)" \
+"$TENANT_ORIGIN/openidm/config/provisioner.openicf/$2" -i
+```
+
+> As outlined in the [Interacting with RCS via IDM's REST](#developing-idm-rest) chapter, while developing your Groovy connector, one convenient option for interacting with the connection configuration endpoint might be your browser console.
+>
+> For example:
+>
+> `IDM admin UI browser console`
+>
+> ```javascript
+> /**
+>  * Register a Groovy connection.
+>  * @todo Sign in IDM admin UI and run this script in the browser console.
+>  */
+>
+> (async function () {
+>     // Step 0
+>     /**
+>      * @todo Name the connection endpoint in IDM REST (case-sensitive, /[a-zA-Z0-9]/).
+>      * This will define the path under which you will interact with your remote connector system object.
+>      * @example
+>      * var connectionName = 'groovy'
+>      *
+>      * Then, the system object endpoint path will be:
+>      * '/openidm/system/groovy'
+>      */
+>     var connectionName = 'groovy'
+>
+>     /**
+>      * @todo Identify your RCS server or server cluster
+>      * as it had been registered in your Platform admin UI > Identities > Connect.
+>      */
+>     var connectorServerName = 'rcs';
+>
+>     // Step 1
+>     /**
+>      * @todo Identify the connector name, for which you want to register a connection.
+>      */
+>     var connectorName = 'org.forgerock.openicf.connectors.groovy.ScriptedConnector';
+>
+>     /**
+>      * Get available connectors.
+>      */
+>     var settings = {
+>         method: 'POST',
+>         url: '/openidm/system?_action=availableConnectors'
+>     };
+>     var connectorRef = await $.ajax(settings);
+>     console.log('connectorRef', JSON.stringify(connectorRef, null, 4));
+>
+>     /**
+>      * Get the connector reference.
+>      */
+>     connectorRef = connectorRef.connectorRef.find((connectorRef) => {
+>        return connectorRef.connectorName === connectorName && connectorRef.connectorHostRef === connectorServerName;
+>     });
+>     console.log('connectorRef', JSON.stringify(connectorRef, null, 4));
+>
+>     if (!connectorRef) {
+>         throw(`Cannot find ${connectorName} on host named ${connectorServerName}.`);
+>     }
+>
+>     // Step 2
+>     /**
+>      * Generate the connector's core configuration.
+>      *
+>      * (Optional) Sort configuration properties for easy navigation and comparison:
+>      * @example JavaScript
+>      * coreConfig.configurationProperties = Object.entries(coreConfig.configurationProperties).sort().reduce((object, [key, value]) => {
+>      *     object[key] = value;
+>      *     return object;
+>      * }, {});
+>      */
+>    settings = {
+>         headers: {
+>             'Content-Type': 'application/json'
+>         },
+>         method: 'POST',
+>         url: '/openidm/system?_action=createCoreConfig',
+>         data: JSON.stringify({
+>             connectorRef: connectorRef
+>         })
+>     };
+>     var coreConfig = await $.ajax(settings);
+>     console.log('coreConfig', JSON.stringify(coreConfig, null, 4));
+>
+>     // Step 3
+>     /**
+>      * Generate full, source-specific configuration.
+>      * For that, add necessary information to the core configuration.
+>      */
+>     coreConfig.configurationProperties.scriptRoots = [
+>         `/opt/openicf/scripts/groovy`
+>     ];
+>     coreConfig.configurationProperties.schemaScriptFileName = 'SchemaScript.groovy';
+>     coreConfig.configurationProperties.searchScriptFileName = 'SearchScript.groovy';
+>     settings = {
+>         headers: {
+>             'Accept-API-Version': 'resource=1.0',
+>             'Content-Type': 'application/json'
+>         },
+>         method: 'POST',
+>         url: '/openidm/system?_action=createFullConfig',
+>         data: JSON.stringify(coreConfig)
+>     };
+>     var fullConfig = await $.ajax(settings);
+>     console.log('fullConfig', JSON.stringify(fullConfig, null, 4));
+>
+>
+>     // optional
+>     /**
+>      * Update the full configuration with additional settings.
+>      */
+>     fullConfig.systemActions = [
+>         {
+>             "scriptId" : "script-1",
+>             "actions" : [
+>                 {
+>                     "systemType" : ".*ScriptedConnector",
+>                     "actionType" : "groovy",
+>                     "actionSource" : "2 + 2;"
+>                 },
+>                 {
+>                     "systemType" : ".*Scripted.*Connector",
+>                     "actionType" : "groovy",
+>                     "actionSource" : "2 * 2"
+>                 }
+>             ]
+>         }
+>     ];
+>     console.log('fullConfigUpdated', JSON.stringify(fullConfig, null, 4));
+>
+>     // Step 4
+>     /**
+>      * Register the connection.
+>      */
+>     settings = {
+>         headers: {
+>             'Content-Type': 'application/json'
+>         },
+>         method: 'PUT',
+>         url: `/openidm/config/provisioner.openicf/${connectionName}`,
+>         data: JSON.stringify(fullConfig)
+>     };
+>     var connection = await $.ajax(settings);
+>     console.log('connection', JSON.stringify(connection, null, 4));
+> }());
+> ```
+>
+> You can also update an existing connection by using its configuration endpoint.
+>
+> For example:
+>
+> `IDM admin UI browser console`
+>
+> ```javascript
+> /**
+>  * Update a Groovy connection.
+>  * @todo Sign in IDM admin UI and run this script in the browser console.
+>  */
+>
+> (async function () {
+>     /**
+>      * @todo Provide name of the connection endpoint in IDM's REST (case-sensitive).
+>      */
+>     var connectionName = 'groovy'
+>
+>     /**
+>      * Get connection configuration.
+>      */
+>    settings = {
+>         url: `/openidm/config/provisioner.openicf/${connectionName}`
+>     };
+>     var connectionConfig = await $.ajax(settings);
+>     console.log('connectionConfig', JSON.stringify(connectionConfig, null, 4));
+>
+>     /**
+>      * Update connection configuration.
+>      */
+>     connectionConfig.systemActions = [
+>         {
+>             "scriptId" : "script-1",
+>             "actions" : [
+>                 {
+>                     "systemType" : ".*Scripted.*Connector",
+>                     "actionType" : "groovy",
+>                     "actionSource" : "2 * 2"
+>                 }
+>             ]
+>         }
+>     ];
+>
+>     /**
+>      * Update connection.
+>      */
+>     settings = {
+>         headers: {
+>             'Content-Type': 'application/json'
+>         },
+>         method: 'PUT',
+>         url: `/openidm/config/provisioner.openicf/${connectionName}`,
+>         data: JSON.stringify(connectionConfig)
+>     };
+>     var connection = await $.ajax(settings);
+>     console.log('connection', JSON.stringify(connection, null, 4));
+> }());
+> ```
+
 ##  <a id="developing-connector-configuration" name="developing-connector-configuration"></a>Connector Configuration
 
 [Back to Contents](#contents)
 
-The docs outline general steps of [Configuring connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST). Configuration properties for different remote connector types (that are available in Identity Cloud) can be found under [Connector reference](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/preface.html) > Remote Connectors.
+Configuration properties for different remote connector types (that are available in Identity Cloud) can be found under [Connector reference](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/preface.html).
 
-This section will elaborate on some additional details, not currently presented in the docs.
+This chapter will elaborate on some additional details, not currently present in the docs.
 
 ###  <a id="developing-connector-configuration-configuration-properties" name="developing-connector-configuration-configuration-properties"></a>Connector Configuration > "configurationProperties"
 
@@ -888,11 +3553,11 @@ This section will elaborate on some additional details, not currently presented 
 
 The "configurationProperties" key in connector configuration contains settings that are specific to the target system.
 
-####  <a id="developing-connector-configuration-configuration-properties-custom-configuration" name="developing-connector-configuration-configuration-properties-custom-configuration"></a>Connector Configuration > "configurationProperties" > "customConfiguration" and "customSensitiveConfiguration"
+#### <a id="developing-connector-configuration-configuration-properties-custom-configuration" name="developing-connector-configuration-configuration-properties-custom-configuration"></a>Connector Configuration > "configurationProperties" > "customConfiguration" and "customSensitiveConfiguration"
 
 [Back to Contents](#contents)
 
-The docs provide an [example of using customConfiguration and customSensitiveConfiguration](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/kerberos.html#ssh-kerberos-config):
+The docs provide an [example of using customConfiguration and customSensitiveConfiguration](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/kerberos.html#ssh-kerberos-config):
 
 ```json
 "customConfiguration" : "kadmin { cmd = '/usr/sbin/kadmin.local'; user = 'openidm/admin'; default_realm = 'EXAMPLE.COM' }",
@@ -931,7 +3596,7 @@ For example, you could have the following configuration for your connector:
 {
     "connectorRef": {
         "connectorHostRef": "rcs",
-        "bundleVersion": "1.5.20.6-SNAPSHOT",
+        "bundleVersion": "1.5.20.15",
         "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
         "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
     },
@@ -1027,7 +3692,7 @@ For example:
 [rcs] value8
 ```
 
-As with many things processed on IDM side, you can use [property value substitution](https://backstage.forgerock.com/docs/idm/7.2/setup-guide/using-property-substitution.html) in the "custom(Sensitive)Configuration" values. In addition to the IDM variables, in Identity Cloud, you can reference [Environment-Specific Variables and Secrets (ESVs)](https://qa.forgerock.com/docs/docs-pr/idcloud/antora/594/idcloud/latest/tenants/esvs.html) in a connector configuration.
+As with many things processed on IDM side, you can use [property value substitution](https://backstage.forgerock.com/docs/idm/7.3/setup-guide/using-property-substitution.html) in the "custom(Sensitive)Configuration" values. In addition to the IDM variables, in Identity Cloud, you can reference [Environment-Specific Variables and Secrets (ESVs)](https://qa.forgerock.com/docs/docs-pr/idcloud/antora/594/idcloud/latest/tenants/esvs.html) in a connector configuration.
 
 For example:
 
@@ -1057,7 +3722,7 @@ println configuration.propertyBag
 [rcs] [oauth2:[client_secret:esv-my-secret  value, provider:https://openam-dx-kl02.forgeblocks.com/, client_id:client-id]]
 ```
 
-> Unfortunately, [one has to be told what _IDM_ variables are](https://backstage.forgerock.com/docs/idm/7.2/setup-guide/using-property-substitution.html#expression-evaluation) in Identity Cloud. You cannot see it for yourself.
+> Unfortunately, [one has to be told what _IDM_ variables are](https://backstage.forgerock.com/docs/idm/7.3/setup-guide/using-property-substitution.html#expression-evaluation) in Identity Cloud. You cannot see it for yourself.
 
 ###  <a id="developing-connector-configuration-system-actions" name="developing-connector-configuration-system-actions"></a>Connector Configuration > "systemActions"
 
@@ -1065,7 +3730,7 @@ println configuration.propertyBag
 
 Since remote connector is a [system object](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/appendix-system-objects.html), you can initiate a scripted action on it. You can define your action under the "systemActions" key in the connector configuration.
 
-> Here, connector configuration is the final JSON sent to the `/openidm/config/provisioner.openicf/<connection-name>` endpoint to register your connector in IDM, as described in [Configure connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST).
+> Here, connector configuration is the final JSON sent to the `/openidm/config/provisioner.openicf/<connection-name>` endpoint to register your connector in IDM, as described in [Configure connectors over REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-connector.html#connector-wiz-REST).
 
 Running a remote script may serve as the means of making a change to or getting a response from the remote system without authorizing to that system or changing its firewall rules.
 
@@ -1279,7 +3944,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
     Path to the IDM's endpoint, at which your remote connection is registered.
 
-    As an example, `/openidm/system/groovy` path in your system action request will correspond to a remote connection registered at `/openidm/config/provisioner.openicf/groovy`, as described in the final step of the [Configure connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST) doc.
+    As an example, `/openidm/system/groovy` path in your system action request will correspond to a remote connection registered at `/openidm/config/provisioner.openicf/groovy`, as described in the final step of the [Configure connectors over REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-connector.html#connector-wiz-REST) doc.
 
 * <a id="developing-connector-configuration-system-actions-rest-parts-action" name="developing-connector-configuration-system-actions-rest-parts-action"></a>`?_action=script`
 
@@ -1427,7 +4092,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
     }
     ```
 
-    In the response, you will now see an array of results—one "result" for each action defined for the system action:
+    In the response, you will now see an array in the result—one "result" for each action defined for the system action:
 
     `Browser Network Response`
 
@@ -1452,11 +4117,11 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
     [rcs] [operation:RUNSCRIPTONCONNECTOR, options:OperationOptions: {CAUD_TRANSACTION_ID:1659985544219-55e3d75b5a1adc2a72f9-134922/0/4}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@73133988, log:org.identityconnectors.common.logging.Log@2cba672e]
     ```
 
-    Note that the `operation` binding value reveals the [script on connector operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-script-on-connector.html) environment, which is the default mode for a remote script execution.
+    Note that the `operation` binding value reveals the [script on connector operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-script-on-connector.html) environment, which is the default mode for a remote script execution.
 
-    In this mode,  the script specified in "actionSource" (or "actionFile") is executed in a context built for a [Run on connector script](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/scripts/script-run-on-connector.html), with the corresponding variable bindings.
+    In this mode,  the script specified in "actionSource" (or "actionFile") is executed in a context built for a [Run on connector script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-run-on-connector.html), with the corresponding variable bindings.
 
-    You can read about common RCS script bindings in [Variables available to all Groovy scripts](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/groovy-operations.html#groovy-script-variables), and find more specific information in the sections designated to a particular script operation.
+    You can read about common RCS script bindings in [Variables available to all Groovy scripts](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/groovy-operations.html#groovy-script-variables), and find more specific information in the sections designated to a particular script operation.
 
 * <a id="developing-connector-configuration-system-actions-rest-parts-request-params" name="developing-connector-configuration-system-actions-rest-parts-request-params"></a>`&arg1=value1&arg2=value2 . . . `
 
@@ -1541,13 +4206,13 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
     The absence or presence of this parameter in a system action request will determine one of the two execution modes for the scripted system action:
 
-    * By default, _without_ this optional parameter populated with this particular value, the script you specify in "actionSource" or "actionFile" script will ["run on connector"](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/scripts/script-run-on-connector.html).
+    * By default, _without_ this optional parameter populated with this particular value, the script you specify in "actionSource" or "actionFile" script will ["run on connector"](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-run-on-connector.html).
 
         In this mode, the script you specify in "actionSource" or "actionFile" will be sent to the RCS, where your scripted connector package is deployed. The ICF framework will execute the script in the connector type-specific context, with all the variable bindings available in the script.
 
         This has been the mode illustrated in all previous examples.
 
-    * Including `&scriptExecuteMode=resource` in a system action request will cause the remote script to ["run on resource"](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/scripts/script-run-on-resource.html).
+    * Including `&scriptExecuteMode=resource` in a system action request will cause the remote script to ["run on resource"](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-run-on-resource.html).
 
         In this mode, a script hosted on the RCS will be executed. The content provided either in "actionSource" or via "actionFile" will be available as the `scriptText` variable to the hosted script.
 
@@ -1627,7 +4292,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
         Note:
 
-        * The `operation` type is "RUNSCRIPTONRESOURCE", which corresponds to the [script on resource operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-script-on-resource.html).
+        * The `operation` type is "RUNSCRIPTONRESOURCE", which corresponds to the [script on resource operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-script-on-resource.html).
 
         * The script you provided in "actionSource" is available to `ScriptOnResourceScript.groovy` as the `scriptText` binding.
 
@@ -1635,7 +4300,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
         * The `scriptText` content is for a Groovy environment, as indicated in the `scriptLanguage` binding.
 
-        Note also that, this particular `ScriptOnResourceScript.groovy` does not return anything; and thus, in the browser response you will see no results:
+        Note also that, this particular `ScriptOnResourceScript.groovy` does not return anything; and thus, in the browser response you will see no result:
 
         `Browser Network Response`
 
@@ -1725,7 +4390,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
         [rcs] [args:[arg1:value1], result:2]
         ```
 
-        In the last few examples, `ScriptOnResourceScript.groovy` ends with the `GroovyShell` call; and thus, the browser response will contain the results of evaluating the "actionSource" script:
+        In the last few examples, `ScriptOnResourceScript.groovy` ends with the `GroovyShell` call; and thus, the browser response will contain the result of evaluating the "actionSource" script:
 
         `Browser Network Response`
 
@@ -2110,38 +4775,28 @@ Then:
 
     Once again, all considerations you might have for invoking a system action with a REST call, except the actual syntax, apply to invoking a system action from an IDM script.
 
-### <a id="developing-connector-configuration-system-actions-support" name="developing-connector-configuration-system-actions-support"></a>Connector Configuration > "systemActions" > Support in Connectors
+#### <a id="developing-connector-configuration-system-actions-support" name="developing-connector-configuration-system-actions-support"></a>Connector Configuration > "systemActions" > Support in Connectors
 
 [Back to Contents](#contents)
 
-The "systemAction" key and its content are only accepted and supported by connectors that implement [Script on connector operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-script-on-connector.html) and [Script on resource operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-script-on-resource.html).
+The "systemAction" key and its content are only accepted and supported by connectors that implement [Script on connector operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-script-on-connector.html) and [Script on resource operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-script-on-resource.html).
 
-At the time of writing, the following (Java) connectors have implemented both:
+At the time of this writing, the following (Java) connectors have implemented both:
 
-* [Kerberos](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/kerberos.html)
+* [Kerberos](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/kerberos.html)
 
-* [Marketo](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/marketo.html)
+* [Marketo](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/marketo.html)
 
-* [MongoDB](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/mongodb.html)
+* [MongoDB](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/mongodb.html)
 
-* [Groovy Connector Toolkit](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/groovy.html)
+* [Groovy Connector Toolkit](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html)
 
-* [Scripted REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/scripted-rest.html)
+* [Scripted REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html)
 
-* [Scripted SQL](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/scripted-sql.html)
+* [Scripted SQL](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-sql.html)
 
-* [SSH](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/ssh.html)
+* [SSH](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/ssh.html)
 
-In addition, the [Salesforce](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/salesforce.html) connector has only "script on connector operation" implemented.
+In addition, the [Salesforce](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/salesforce.html) connector has only "script on connector operation" implemented.
 
-> Although unrelated to Java RCS, [Scripted connectors with PowerShell](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/powershell.html) support script on connector operation as well.
-
-## <a id="example-connectors" name="example-connectors"></a>Example Connectors
-
-[Back to Contents](#contents)
-
-### <a id="example-connectors-scripted-sql" name="example-connectors-scripted-sql"></a>Example Connectors > Scripted SQL
-
-[Back to Contents](#contents)
-
-[README](./connectors/postgres/README.md) for a PostgreSQL connector configuration example.
+> Although unrelated to Java RCS, [Scripted connectors with PowerShell](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/powershell.html) support script on connector operation as well.
