@@ -1,8 +1,17 @@
 # Developing Scripted Connectors for Java Remote Connector Server (RCS)
 
+In a managed environment that [ForgeRock Identity Cloud](https://backstage.forgerock.com/docs/idcloud/latest/home.html) (Identity Cloud) presents, [syncing identities](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html) via a remote server provides necessary flexibility in integrating your [ForgeRock Identity Platform](https://backstage.forgerock.com/docs/platform) (Platform) with external systems.
+
+Scripted implementations extend this flexibility further and almost indefinitely.
+
+The following content aims to overlay existing ever-evolving docs with additional structure and details that will hopefully help one understand better the RCS setup and using it to its maximum capabilities.
+
+While primary focus and many references in this article are pointed to Identity Cloud, much of the lower level considerations should be universally applicable to other current RCS scripted solutions.
+
 ## <a id="contents" name="contents"></a>Contents
 
 * [Choosing IDE](#developing-ide)
+* [Interacting with RCS via IDM's REST](#developing-idm-rest)
 * [Debugging Scripts](#developing-debugging-scripts)
     * [Try and Catch](#developing-debugging-scripts-try-catch)
     * [Custom Logs](#developing-debugging-scripts-custom-logs)
@@ -46,6 +55,71 @@ In a non-Java or in a polyglottal IDE, you might be able to effectively maintain
 
 > For example, as of this writing, no Groovy debugger extension is available for Visual Code Studio—a very popular code editor. This means that, if you want to do remote debugging and attach a debugger to your RCS process, you will have to use something like IntelliJ.
 
+## <a id="developing-idm-rest" name="developing-idm-rest"></a>Interacting with RCS via IDM's REST
+
+A remote connector is a [system object](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/appendix-system-objects.html), and as such, you can interact with it via [IDM's REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html).
+
+You will need to authorize your requests to IDM's REST as an IDM administrator.
+
+In Identity Cloud, this means providing an OAuth 2.0 bearer token in the `Authorization` header of your request. The token needs to be obtained with a client mapped to an IDM subject associated with the admin role.
+
+The easiest way of accomplishing this type of authorization is signing in to the IDM admin UI, and using the browser console for making HTTP request with `jQuery`. Internally, `jQuery` uses `XMLHttpRequest` (XHR), and such requests are automatically authorized by the IDM admin UI.
+
+For example (where `[ . . . ]` denotes omission from the original content):
+
+`IDM Admin Browser Console`
+
+```javascript
+(async function () {
+    var data = await $.ajax('/openidm/system?_action=availableConnectors', {
+        method: 'POST'
+    });
+
+    console.log(JSON.stringify(data, null, 4));
+}());
+```
+
+In the output, this will produce similar to the following:
+
+```json
+{
+    "connectorRef": [
+        {
+            "connectorHostRef": "rcs",
+            "displayName": "SSH Connector",
+            "bundleVersion": "1.5.20.12-SNAPSHOT",
+            "systemType": "provisioner.openicf",
+            "bundleName": "org.forgerock.openicf.connectors.ssh-connector",
+            "connectorName": "org.forgerock.openicf.connectors.ssh.SSHConnector"
+        },
+        [ . . . ]
+        {
+            "connectorHostRef": "rcs",
+            "displayName": "CSV File Connector",
+            "bundleVersion": "1.5.20.12-SNAPSHOT",
+            "systemType": "provisioner.openicf",
+            "bundleName": "org.forgerock.openicf.connectors.csvfile-connector",
+            "connectorName": "org.forgerock.openicf.csvfile.CSVFileConnector"
+        }
+    ]
+}
+```
+
+Alternatively, you could use an IDE like [Postman](https://www.postman.com/) for crafting your requests to IDM's REST.
+
+You can also obtain your access token separately and use with [cURL](https://curl.se/). For example, an equivalent to the aforementioned request made with cURL will look similar to the following:
+
+```sh
+curl 'https://openam-dx-kl03.forgeblocks.com/openidm/system?_action=availableConnectors' \
+-X POST \
+-H 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJraWQiOiI1Sk9EejJwNVFIS08wUFNZTWlEL1lXT3Zkc0U9IiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiI4NWRmM2JiMC04MGRkLTRkMTAtYWE3MC1jZWY5MWExZWY5NTciLCJjdHMiOiJPQVVUSDJfU1RBVEVMRVNTX0dSQU5UIiwiYXV0aF9sZXZlbCI6MCwiYXVkaXRUcmFja2luZ0lkIjoiZmZmMDljNjctZGVjOS00OGIyLWIxNWMtNjljZjI0OTk4OTA1LTEyNDI2MCIsInN1Ym5hbWUiOiI4NWRmM2JiMC04MGRkLTRkMTAtYWE3MC1jZWY5MWExZWY5NTciLCJpc3MiOiJodHRwczovL29wZW5hbS1keC1rbDAzLmZvcmdlYmxvY2tzLmNvbTo0NDMvYW0vb2F1dGgyIiwidG9rZW5OYW1lIjoiYWNjZXNzX3Rva2VuIiwidG9rZW5fdHlwZSI6IkJlYXJlciIsImF1dGhHcmFudElkIjoiU1lETzYweGQ4eG5YYnAyYzNBYkJpS0F3MmVnIiwiYXVkIjoiaWRtQWRtaW5DbGllbnQiLCJuYmYiOjE2NzMwNDM5OTEsImdyYW50X3R5cGUiOiJhdXRob3JpemF0aW9uX2NvZGUiLCJzY29wZSI6WyJmcjppZG06KiJdLCJhdXRoX3RpbWUiOjE2NzMwNDM1MTIsInJlYWxtIjoiLyIsImV4cCI6MTY3MzA0NzU5MSwiaWF0IjoxNjczMDQzOTkxLCJleHBpcmVzX2luIjozNjAwLCJqdGkiOiJTN0kwZThMR2poVWp1NkZ0N3NqSWNDdnotQ2sifQ.iE5n1lZav7ITdedWXGeGtAG6jULLzxSlhQwyfQz4yBR6LOsrjcRk9sa-ULuTiWET51mRGsyTzbSpjhxk0FkN3AjWCqgDaltRoI4x2P3j-Q-jhmGschTiVksI0XNDiWkEbqhTj-cYSO0SazbTNKD3r5kkhhU3II7dgvX3dcBIzLXydqDwbALPzCHJAoeWO1Q-Sf7bt6EMZmCMy2g9Nf3lzVa3q9RH3j65iyyMmPvJLu-SUnwQZr2JAJS_0a9cTB2UL_bVo2tC9WNkdCoQ_952Bdzv-_txWkDl-6paHDUeeZegq2CK4t4ldh3RYdbFZVoMlrPM32fHWxaT0T2MSWMLNA' \
+-H 'Content-Length: 0'
+```
+
+Browser console, however, can serve well as an IDE for functional programming in JavaScript. It will provide an interactive playground with code highlighting, autocompletion, and error checking. It will add necessary headers to your requests. And, in the case of IDM admin UI, it will have jQuery preloaded and its requests authorized. Finally, it will provide convenient output that you can interact with.
+
+We will use this technique in the examples below.
+
 ## <a id="developing-debugging-scripts" name="developing-debugging-scripts"></a>Debugging Scripts
 
 [Back to Contents](#contents)
@@ -58,7 +132,7 @@ If an unhandled error occurs in your RCS scripts, depending on the script, it ma
 
 Therefore, you should wrap your code with a `try/catch` block, send custom error messages to the logs output, and, potentially, throw a custom exception.
 
-For example (where `[ . . . ]` denotes omission from the original source):
+For example:
 
 `SearchScript.groovy`
 
@@ -663,9 +737,7 @@ println configuration.propertyBag
 
 [Back to Contents](#contents)
 
-A remote connector is a [system object](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/appendix-system-objects.html).
-
-You can initiate a scripted "action" on a system object. You can define your action under the "systemActions" key in the connector configuration.
+Since remote connector is a [system object](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/appendix-system-objects.html), you can initiate a scripted action on it. You can define your action under the "systemActions" key in the connector configuration.
 
 > Here, connector configuration is the final JSON sent to the `/openidm/config/provisioner.openicf/<connector-name>` endpoint to register your connector in IDM, as described in [Configure connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST).
 
@@ -800,19 +872,7 @@ You can use either of the two ways to invoke a scripted system action on a remot
 
 [Back to Contents](#contents)
 
-You can send a request via IDM's REST API to [run a script on a system object](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html#script-system-object).
-
-You will need to authorize the request as an IDM administrator.
-
-In Identity Cloud, this means providing an OAuth 2.0 bearer token in the `Authorization` header of your request. The token needs to be obtained with a client mapped to an IDM subject associated with the admin role.
-
-> The easiest way of accomplishing this type of authorization for demonstrational purposes is signing in the IDM admin UI, and using the browser console for making an HTTP request with `jQuery`.
->
-> Internally, `jQuery` uses `XMLHttpRequest` (XHR), and such requests are automatically authorized by the IDM admin UI.
->
-> We will use this technique in the examples below.
-
-To execute a scripted system action over REST, you will need to make the following POST request:
+You can [run a script on a remote connector](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html#script-system-object) by sending following POST request to IDM's REST API:
 
 `/openidm/system/<connector-name>`?`_action=script`&`scriptId=<script_id>`[&`scriptExecuteMode=resource`]
 
@@ -824,7 +884,7 @@ To execute a scripted system action over REST, you will need to make the followi
 
     [Back to Contents](#contents)
 
-    The IDM's endpoint, at which your remote connection is registered.
+    Path to the IDM's endpoint, at which your remote connection is registered.
 
     As an example, `/openidm/system/groovy` path in your system action request will correspond to a remote connection registered at `/openidm/config/provisioner.openicf/groovy`, as described in the final step of the [Configure connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST) doc.
 
@@ -871,8 +931,6 @@ To execute a scripted system action over REST, you will need to make the followi
     (async function () {
         var data = await $.ajax('/openidm/system/groovy?_action=script&scriptId=script-1', {
             method: 'POST'
-        }).then((data) => {
-            return data;
         });
 
         console.log(JSON.stringify(data, null, 4));
@@ -1025,8 +1083,6 @@ To execute a scripted system action over REST, you will need to make the followi
             data: JSON.stringify({
                 arg1: 'value1'
             })
-        }).then((data) => {
-            return data;
         });
 
         console.log(JSON.stringify(data, null, 4));
@@ -1153,8 +1209,6 @@ To execute a scripted system action over REST, you will need to make the followi
                 data: JSON.stringify({
                     arg1: 'value1'
                 })
-            }).then((data) => {
-                return data;
             });
 
             console.log(JSON.stringify(data, null, 4));
@@ -1389,8 +1443,6 @@ To execute a scripted system action over REST, you will need to make the followi
                 data: JSON.stringify({
                     arg1: 'value1'
                 })
-            }).then((data) => {
-                return data;
             });
 
             console.log(JSON.stringify(data, null, 4));
@@ -1436,8 +1488,6 @@ To execute a scripted system action over REST, you will need to make the followi
         >         data: JSON.stringify({
         >             arg1: 'value1'
         >         })
-        >     }).then((data) => {
-        >         return data;
         >     });
         >
         >     console.log(JSON.stringify(data, null, 4));
