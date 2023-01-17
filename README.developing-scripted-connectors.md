@@ -30,7 +30,8 @@ While primary focus and many references in this article are pointed to Identity 
             * [Parts of the Request](#developing-connector-configuration-system-actions-rest-parts)
                 * [/openidm/system/\<connector-name\> (connection endpoint)](#developing-connector-configuration-system-actions-rest-parts-path)
                 * [?_action=script (execute script)](#developing-connector-configuration-system-actions-rest-parts-action)
-                * [&scriptId=\<script_id\> (scripts to execute and return from)](#developing-connector-configuration-system-actions-rest-parts-script-id)
+                * [&scriptId=\<script_id\> (identifier for system action to execute and return from)](#developing-connector-configuration-system-actions-rest-parts-script-id)
+                * [&arg1=value1&arg2=value2 . . . (script arguments)](#developing-connector-configuration-system-actions-rest-parts-request-params)
                 * [request body (script arguments)](#developing-connector-configuration-system-actions-rest-parts-request-body)
                 * [&scriptExecuteMode=resource ("run on resource")](#developing-connector-configuration-system-actions-rest-parts-execute-mode)
             * ["run on resource" vs "run on connector"](#developing-connector-configuration-system-actions-rest-execute-modes)
@@ -749,6 +750,37 @@ A scripted action on a remote connector could also be used to change the connect
 
 [Back to Contents](#contents)
 
+First, to outline its general structure, example of a system action definition with two individual actions with one returning script bindings and another one solving a math problem:
+
+`provisioner.openicf-<connector-name>.json`
+```json
+{
+    "connectorRef": {
+        "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
+        [ . . . ]
+    },
+    [ . . . ]
+    "systemActions": [
+        {
+            "scriptId" : "script-1",
+            "actions" : [
+                {
+                    "systemType" : ".*ScriptedConnector",
+                    "actionType" : "groovy",
+                    "actionSource" : "binding.variables.toString();"
+                },
+                {
+                    "systemType" : ".*ScriptedConnector",
+                    "actionType" : "groovy",
+                    "actionSource" : "4 * 4"
+                }
+            ]
+        },
+        [ . . . ]
+    ]
+}
+```
+
 Each system action is defined with the following keys:
 
 * <a id="developing-connector-configuration-system-actions-definition-script-id" name="developing-connector-configuration-system-actions-definition-script-id"></a>"scriptId"
@@ -756,33 +788,6 @@ Each system action is defined with the following keys:
     [Back to Contents](#contents)
 
     The ID you will use in your request to invoke this system action.
-
-    For example:
-
-    `provisioner.openicf-<connector-name>.json`
-
-    ```json
-    {
-        "connectorRef": {
-            "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
-            [ . . . ]
-        },
-        [ . . . ]
-        "systemActions": [
-            {
-                "scriptId" : "script-1",
-                "actions" : [
-                    {
-                        "systemType" : ".*ScriptedConnector",
-                        "actionType" : "groovy",
-                        "actionSource" : "return true"
-                    }
-                ]
-            },
-            [ . . . ]
-        ]
-    }
-    ```
 
 * <a id="developing-connector-configuration-system-actions-definition-actions" name="developing-connector-configuration-system-actions-definition-actions"></a>"actions"
 
@@ -796,11 +801,74 @@ Each system action is defined with the following keys:
 
         [Back to Contents](#contents)
 
-        A _wildcard_ reference to the connector type. Each action will be performed in the context of the specified connector type, for which a scripting environment will be built.
+        Reference to the connector type for which this action was written. System actions will be performed in the context of the connector type, for which scripting environment will be built. You can populate this key with a regular expression matching the connector type.
 
         You GET the connector type in "connectorRef.connectorName" in the core connector configuration JSON received from the `/openidm/system?_action=availableConnectors` endpoint.
 
-        Based on the provided "systemType", IDM will build appropriate script context for your remote system action.
+        If "systemType" does not match the connector type, the action will be ignored when the corresponding system action "scriptId" is requested.
+
+        For example, consider the aforementioned example:
+
+        *  The system type for both actions, ".*ScriptedConnector", matches the connector name, "org.forgerock.openicf.connectors.groovy.ScriptedConnector".
+
+        * Therefore, when "script-1" is requested, both actions will return results:
+
+        ```json
+        {
+            "actions": [
+                {
+                    "result": "[arg1:Arg1, param1:Param1, operation:RUNSCRIPTONCONNECTOR, options:OperationOptions: {CAUD_TRANSACTION_ID:1674597149435-ad859d99bf71003de8ae-19623/0/1}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@213027ec, log:org.identityconnectors.common.logging.Log@41b1ffbf]"
+                },
+                {
+                    "result": 4
+                }
+            ]
+        }
+        ```
+
+        If you define the same actions for a different connector type, you will need to match it with the "systemType" value:
+
+        ```json
+        {
+            "connectorRef": {
+                "connectorName": "org.forgerock.openicf.connectors.scriptedrest.ScriptedRESTConnector",
+                [ . . . ]
+            },
+            [ . . . ]
+            "systemActions": [
+                {
+                    "scriptId" : "script-1",
+                    "actions" : [
+                        {
+                            "systemType" : ".*ScriptedRESTConnector",
+                            "actionType" : "groovy",
+                            "actionSource" : "binding.variables.toString();"
+                        },
+                        {
+                            "systemType" : ".*ScriptedConnector",
+                            "actionType" : "groovy",
+                            "actionSource" : "4 * 4"
+                        }
+                    ]
+                },
+                [ . . . ]
+            ]
+        }
+        ```
+
+        If you request this system action, identified by "script-1" id, only the matching action will be executed and return result:
+
+        ```json
+        {
+            "actions": [
+                {
+                    "result": "[arg1:Arg1, param1:Param1, operation:RUNSCRIPTONCONNECTOR, options:OperationOptions: {CAUD_TRANSACTION_ID:1674597562382-5618dcd582b30aa5ae0d-20316/0/1}, configuration:org.forgerock.openicf.connectors.scriptedrest.ScriptedRESTConfiguration@27a387dd, connection:org.apache.http.impl.client.InternalHttpClient@21979403, customizedConnection:InnerRESTClient@106ef511, log:org.identityconnectors.common.logging.Log@6124b177]"
+                }
+            ]
+        }
+        ```
+
+        Note also that for this connector type, `ScriptedRESTConnector`, there are two additional bindings available for the action script: `connection` and `customizedConnection`.
 
     * <a id="developing-connector-configuration-system-actions-definition-actions-action-type" name="developing-connector-configuration-system-actions-definition-actions-action-type"></a>"actionType"
 
@@ -830,39 +898,22 @@ Each system action is defined with the following keys:
 
             For example:
 
-            `provisioner.openicf-<connector-name>.json`
             ```json
+            [ . . . ]
             {
-                "connectorRef": {
-                    "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector",
-                    [ . . . ]
-                },
                 [ . . . ]
-                "systemActions": [
-                    {
-                        "scriptId" : "script-1",
-                        "actions" : [
-                            {
-                                "systemType" : ".*ScriptedConnector",
-                                "actionType" : "groovy",
-                                "actionSource" : "println 'actionSource bindings: '; println binding.variables;"
-                            },
-                            {
-                                "systemType" : ".*ScriptedConnector",
-                                "actionType" : "groovy",
-                                "actionSource" : "println 'actionSource bindings: ' \nprintln binding.variables"
-                            }
-                        ]
-                    },
-                    [ . . . ]
-                ]
+                "actionSource" : "println 'actionSource bindings: '; println binding.variables;"
+            },
+            {
+                [ . . . ]
+                "actionSource" : "println 'actionSource bindings: ' \nprintln binding.variables"
             }
+            [ . . . ]
             ```
 
             > You can use a formatting tool where your script content is converted into a JSON-acceptable format; for example, https://www.freeformatter.com/json-escape.html
             >
             > You can consult https://www.json.org/json-en.html on the acceptable JSON syntax.
-
 
 You can use either of the two ways to invoke a scripted system action on a remote connector:
 * [Invoking via REST](#developing-connector-configuration-system-actions-rest)
@@ -874,7 +925,7 @@ You can use either of the two ways to invoke a scripted system action on a remot
 
 You can [run a script on a remote connector](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html#script-system-object) by sending following POST request to IDM's REST API:
 
-`/openidm/system/<connector-name>`?`_action=script`&`scriptId=<script_id>`[&`scriptExecuteMode=resource`]
+`/openidm/system/<connector-name>`?`_action=script`&`scriptId=<script_id>`[&`arg1=value1`&`arg2=value2` . . . ]\[&`scriptExecuteMode=resource`]
 
 #####  <a id="developing-connector-configuration-system-actions-rest-parts" name="developing-connector-configuration-system-actions-rest-parts"></a>Connector Configuration > "systemActions" > Invoking via REST > Parts of the Request:
 
@@ -1062,6 +1113,14 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
     In this mode,  the script specified in "actionSource" (or "actionFile") is executed in a context built for a [Run on connector script](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/scripts/script-run-on-connector.html), with the corresponding variable bindings.
 
     You can read about common RCS script bindings in [Variables available to all Groovy scripts](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/groovy-operations.html#groovy-script-variables), and find more specific information in the sections designated to a particular script operation.
+
+* <a id="developing-connector-configuration-system-actions-rest-parts-request-params" name="developing-connector-configuration-system-actions-rest-parts-request-params"></a>`&arg1=value1&arg2=value2 . . . `
+
+    [Back to Contents](#contents)
+
+    Besides `scriptId`, you can pass additional arbitrary arguments in the query string. These will become variables in the scripting context.
+
+    It might be more efficient, however, to define you script parameters in the request body.
 
 * <a id="developing-connector-configuration-system-actions-rest-parts-request-body" name="developing-connector-configuration-system-actions-rest-parts-request-body"></a>`request body`
 
@@ -1547,7 +1606,7 @@ Except for the actual syntax, all the information used for invoking a system act
 
 * `content` is an object that in the REST request is described in the [request body](#developing-connector-configuration-system-actions-rest-parts-request-body) JSON.
 
-* `params` is an object containing additional parameters, like [scriptId=\<script_id\>](#developing-connector-configuration-system-actions-rest-parts-script-id) and [scriptExecuteMode=resource](#developing-connector-configuration-system-actions-rest-parts-execute-mode), presented in the query string of the REST request.
+* `params` is an object containing additional arguments, such as [scriptId=\<script_id\>](#developing-connector-configuration-system-actions-rest-parts-script-id), [scriptExecuteMode=resource](#developing-connector-configuration-system-actions-rest-parts-execute-mode), and any [additional arguments](#developing-connector-configuration-system-actions-rest-parts-request-params) included in the query string of the REST request.
 
 * `fields` can be omitted.
 
@@ -1599,7 +1658,7 @@ Then:
 
     [Back to Contents](#contents)
 
-    A _"run on connector"_ script call in an IDM script could look like the following:
+    A call to _"run on connector"_ operation in an IDM script could look like the following:
 
     `IDM Admin > Managed object > alpha_user > onRead Inline Script (text/javascript)`
 
@@ -1728,7 +1787,7 @@ At the time of writing, the following (Java) connectors have implemented both:
 
 In addition, the [Salesforce](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/salesforce.html) connector has only "script on connector operation" implemented.
 
-> Although unrelated to Java RCS, [Scripted connectors with PowerShell](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/powershell.html) support "script on connector operation" as well.
+> Although unrelated to Java RCS, [Scripted connectors with PowerShell](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/powershell.html) support script on connector operation as well.
 
 ## <a id="example-connectors" name="example-connectors"></a>Example Connectors
 
