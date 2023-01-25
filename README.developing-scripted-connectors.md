@@ -801,17 +801,19 @@ Each system action is defined with the following keys:
 
         [Back to Contents](#contents)
 
-        Reference to the connector type for which this action was written. System actions will be performed in the context of the connector type, for which scripting environment will be built. You can populate this key with a regular expression matching the connector type.
+        Reference to connector type for which this action was written. System actions will be performed in the context of the connector type, for which scripting environment will be built.
 
-        You GET the connector type in "connectorRef.connectorName" in the core connector configuration JSON received from the `/openidm/system?_action=availableConnectors` endpoint.
+        You GET the connector type in "connectorRef.connectorName" in the core connector configuration JSON received from the `/openidm/system?_action=availableConnectors` endpoint. This name will be saved in the final connection configuration.
 
-        If "systemType" does not match the connector type, the action will be ignored when the corresponding system action "scriptId" is requested.
+        You can populate "systemType" key with a regular expression matching "connectorRef.connectorName".
 
-        For example, consider the aforementioned example:
+        If "systemType" does not match "connectorRef.connectorName", the action will not be executed when the parent system action is requested.
+
+        Consider the aforementioned example:
 
         *  The system type for both actions, ".*ScriptedConnector", matches the connector name, "org.forgerock.openicf.connectors.groovy.ScriptedConnector".
 
-        * Therefore, when "script-1" is requested, both actions will return results:
+        * Therefore, when "script-1" system action is requested, both ot its actions will return results:
 
         ```json
         {
@@ -826,7 +828,9 @@ Each system action is defined with the following keys:
         }
         ```
 
-        If you define the same actions for a different connector type, you will need to match it with the "systemType" value:
+        To run an action on a connector of different type, you will need a matching "systemType" value.
+
+        For example:
 
         ```json
         {
@@ -856,7 +860,13 @@ Each system action is defined with the following keys:
         }
         ```
 
-        If you request this system action, identified by "script-1" id, only the matching action will be executed and return result:
+        Note:
+
+        * "systemType" value for the fist action, ".*ScriptedRESTConnector", matches the connector name, "org.forgerock.openicf.connectors.scriptedrest.ScriptedRESTConnector".
+
+        * "systemType" value for the second action does NOT match the connector name saved in "connectorRef.connectorName".
+
+        If you request this system action, identified as "script-1", only the matching action will be executed and return result:
 
         ```json
         {
@@ -869,6 +879,10 @@ Each system action is defined with the following keys:
         ```
 
         Note also that for this connector type, `ScriptedRESTConnector`, there are two additional bindings available for the action script: `connection` and `customizedConnection`.
+
+        If there are no actions with "systemType" matching "connectorRef.connectorName", requesting the parent system action will return a 400 error accompanied with the following message:
+
+        > Script ID: `<system-action-scriptId>` for systemType `<connector-name>` is not defined.
 
     * <a id="developing-connector-configuration-system-actions-definition-actions-action-type" name="developing-connector-configuration-system-actions-definition-actions-action-type"></a>"actionType"
 
