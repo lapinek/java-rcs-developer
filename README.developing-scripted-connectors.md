@@ -28,7 +28,7 @@ While primary focus and many references in this article are pointed to Identity 
                 * ["actionSource" _or_ "actionFile"](#developing-connector-configuration-system-actions-definition-actions-action-source-or-file)
         * [Invoking via REST](#developing-connector-configuration-system-actions-rest)
             * [Parts of the Request](#developing-connector-configuration-system-actions-rest-parts)
-                * [/openidm/system/\<connector-name\> (connection endpoint)](#developing-connector-configuration-system-actions-rest-parts-path)
+                * [/openidm/system/\<connection-name\> (connection endpoint)](#developing-connector-configuration-system-actions-rest-parts-path)
                 * [?_action=script (execute script)](#developing-connector-configuration-system-actions-rest-parts-action)
                 * [&scriptId=\<script_id\> (identifier for system action to execute and return from)](#developing-connector-configuration-system-actions-rest-parts-script-id)
                 * [&arg1=value1&arg2=value2 . . . (script arguments)](#developing-connector-configuration-system-actions-rest-parts-request-params)
@@ -154,7 +154,7 @@ try {
 >
 > An object's `.plus()` method invoked by the `+` operator might not be taking a String as its argument. Hence, for the `operation` object, this particular expression in the `try` block will throw an exception.
 
-When you look for a connector data in the IDM admin UI under CONFIGURE > CONNECTORS > _connector name_ > Data, it will call the search script, and the browser response will contain:
+When you look for a connector data in the IDM admin UI under CONFIGURE > CONNECTORS > _connection name_ > Data, it will call the search script, and the browser response will contain:
 
 ```json
 {"code":404,"reason":"Not Found","message":"Error occurred during SEARCH operation"}
@@ -600,7 +600,7 @@ If you use a closure for setting "customConfiguration", the word preceding the c
 
 For example, you could have the following configuration for your connector:
 
-`provisioner.openicf-<connector-name>.json`
+`provisioner.openicf-<connection-name>.json`
 
 ```json
 {
@@ -663,7 +663,7 @@ The properties defined in "customSensitiveConfiguration" will overwrite the same
 
 For example:
 
-`provisioner.openicf-<connector-name>.json`
+`provisioner.openicf-<connection-name>.json`
 
 ```json
 {
@@ -706,7 +706,7 @@ As with many things processed on IDM side, you can use [property value substitut
 
 For example:
 
-`provisioner.openicf-<connector-name>.json`
+`provisioner.openicf-<connection-name>.json`
 
 ```json
 {
@@ -740,7 +740,7 @@ println configuration.propertyBag
 
 Since remote connector is a [system object](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/appendix-system-objects.html), you can initiate a scripted action on it. You can define your action under the "systemActions" key in the connector configuration.
 
-> Here, connector configuration is the final JSON sent to the `/openidm/config/provisioner.openicf/<connector-name>` endpoint to register your connector in IDM, as described in [Configure connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST).
+> Here, connector configuration is the final JSON sent to the `/openidm/config/provisioner.openicf/<connection-name>` endpoint to register your connector in IDM, as described in [Configure connectors over REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-reference/configure-connector.html#connector-wiz-REST).
 
 Running a remote script may serve as the means of making a change to or getting a response from the remote system without authorizing to that system or changing its firewall rules.
 
@@ -752,7 +752,8 @@ A scripted action on a remote connector could also be used to change the connect
 
 First, to outline its general structure, example of a system action definition with two individual actions with one returning script bindings and another one solving a math problem:
 
-`provisioner.openicf-<connector-name>.json`
+`provisioner.openicf-<connection-name>.json`
+
 ```json
 {
     "connectorRef": {
@@ -831,6 +832,8 @@ Each system action is defined with the following keys:
         To run an action on a connector of different type, you will need a matching "systemType" value.
 
         For example:
+
+        `provisioner.openicf-<connection-name>.json`
 
         ```json
         {
@@ -939,13 +942,13 @@ You can use either of the two ways to invoke a scripted system action on a remot
 
 You can [run a script on a remote connector](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html#script-system-object) by sending following POST request to IDM's REST API:
 
-`/openidm/system/<connector-name>`?`_action=script`&`scriptId=<script_id>`[&`arg1=value1`&`arg2=value2` . . . ]\[&`scriptExecuteMode=resource`]
+`/openidm/system/<connection-name>`?`_action=script`&`scriptId=<script_id>`[&`arg1=value1`&`arg2=value2` . . . ]\[&`scriptExecuteMode=resource`]
 
 #####  <a id="developing-connector-configuration-system-actions-rest-parts" name="developing-connector-configuration-system-actions-rest-parts"></a>Connector Configuration > "systemActions" > Invoking via REST > Parts of the Request:
 
 [Back to Contents](#contents)
 
-* <a id="developing-connector-configuration-system-actions-rest-parts-path" name="developing-connector-configuration-system-actions-rest-parts-path"></a>`/openidm/system/<connector-name>`
+* <a id="developing-connector-configuration-system-actions-rest-parts-path" name="developing-connector-configuration-system-actions-rest-parts-path"></a>`/openidm/system/<connection-name>`
 
     [Back to Contents](#contents)
 
@@ -967,7 +970,8 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
     For example, consider the following system action definition:
 
-    `provisioner.openicf-<connector-name>.json`
+    `provisioner.openicf-<connection-name>.json`
+
     ```json
     {
         "connectorRef": {
@@ -1073,7 +1077,8 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
     As an example of a serializable value, you could return a list (as the result of an arbitrary operation in remotely executed script):
 
-    `provisioner.openicf-<connector-name>.json`
+    `provisioner.openicf-<connection-name>.json`
+
     ```json
     {
         "connectorRef": {
@@ -1225,7 +1230,8 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
         For example:
 
-        `provisioner.openicf-<connector-name>.json`
+        `provisioner.openicf-<connection-name>.json`
+
         ```json
         {
             "connectorRef": {
@@ -1237,7 +1243,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
                     "groovy"
                 ],
                 "scriptRoots": [
-                    "/opt/openicf/scripts/<connector-name>"
+                    "/opt/openicf/scripts/<connection-name>"
                 ],
                 "scriptOnResourceScriptFileName": "ScriptOnResourceScript.groovy",
                 [ . . . ]
@@ -1422,7 +1428,8 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
         For example, let's add the following system action with the "script-2" ID to the connector configuration:
 
-        `provisioner.openicf-<connector-name>.json`
+        `provisioner.openicf-<connection-name>.json`
+
         ```json
         {
             "connectorRef": {
@@ -1434,7 +1441,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
                     "groovy"
                 ],
                 "scriptRoots": [
-                    "/opt/openicf/scripts/<connector-name>"
+                    "/opt/openicf/scripts/<connection-name>"
                 ],
                 "scriptOnResourceScriptFileName": "ScriptOnResourceScript.groovy",
                 [ . . . ]
@@ -1614,7 +1621,7 @@ You can invoke a system action from an [IDM script](https://backstage.forgerock.
 
 Except for the actual syntax, all the information used for invoking a system action via IDM's REST applies here. The `openidm.action(resource, actionName, content, params, fields)` arguments map to the parts of a system action REST request in the following way:
 
-* `resource` corresponds to the [/openidm/system/\<connector-name\>](#developing-connector-configuration-system-actions-rest-parts-path) part of the path.
+* `resource` corresponds to the [/openidm/system/\<connection-name\>](#developing-connector-configuration-system-actions-rest-parts-path) part of the path.
 
 * `actionName` corresponds to the [_action=script](#developing-connector-configuration-system-actions-rest-parts-action) ("execute script" action) URL parameter and is always populated with 'script'.
 
@@ -1630,7 +1637,8 @@ Except for the actual syntax, all the information used for invoking a system act
 
 For comparison, let's assume the same connector configuration as in the preceding REST examples:
 
-`provisioner.openicf-<connector-name>.json`
+`provisioner.openicf-<connection-name>.json`
+
 ```json
 {
     "connectorRef": {
@@ -1644,7 +1652,7 @@ For comparison, let's assume the same connector configuration as in the precedin
             "groovy"
         ],
         "scriptRoots": [
-            "/opt/openicf/scripts/<connector-name>"
+            "/opt/openicf/scripts/<connection-name>"
         ],
         "scriptOnResourceScriptFileName": "ScriptOnResourceScript.groovy",
         [ . . . ]
