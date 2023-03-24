@@ -26,7 +26,7 @@ While primary focus and many references in this article are pointed to Identity 
                 * ["systemType"](#developing-connector-configuration-system-actions-definition-actions-system-type)
                 * ["actionType"](#developing-connector-configuration-system-actions-definition-actions-action-type)
                 * ["actionSource" _or_ "actionFile"](#developing-connector-configuration-system-actions-definition-actions-action-source-or-file)
-        * [Invoking via REST](#developing-connector-configuration-system-actions-rest)
+        * [Invoking via IDM's REST](#developing-connector-configuration-system-actions-rest)
             * [Parts of the Request](#developing-connector-configuration-system-actions-rest-parts)
                 * [/openidm/system/\<connection-name\> (connection endpoint)](#developing-connector-configuration-system-actions-rest-parts-path)
                 * [?_action=script (execute script)](#developing-connector-configuration-system-actions-rest-parts-action)
@@ -58,7 +58,9 @@ In a non-Java or in a polyglottal IDE, you might be able to effectively maintain
 
 ## <a id="developing-idm-rest" name="developing-idm-rest"></a>Interacting with RCS via IDM's REST
 
-A remote connector is a [system object](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/appendix-system-objects.html), and as such, you can interact with it via [IDM's REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html).
+[Back to Contents](#contents)
+
+A remote connector is a [system object](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/appendix-system-objects.html), and as such, you can interact with it via [IDM's REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html)—which is a convenient option to validate your work during development.
 
 You will need to authorize your requests to IDM's REST as an IDM administrator.
 
@@ -108,12 +110,12 @@ In the output, this will produce similar to the following:
 
 Alternatively, you could use an IDE like [Postman](https://www.postman.com/) for crafting your requests to IDM's REST.
 
-You can also obtain your access token separately and use with [cURL](https://curl.se/). For example, an equivalent to the aforementioned request made with cURL will look similar to the following:
+You can also obtain your access token separately and use it with [cURL](https://curl.se/). For example, an equivalent to the aforementioned request made with cURL will look similar to the following:
 
 ```sh
 curl 'https://openam-dx-kl03.forgeblocks.com/openidm/system?_action=availableConnectors' \
 -X POST \
--H 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJraWQiOiI1Sk9EejJwNVFIS08wUFNZTWlEL1lXT3Zkc0U9IiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiI4NWRmM2JiMC04MGRkLTRkMTAtYWE3MC1jZWY5MWExZWY5NTciLCJjdHMiOiJPQVVUSDJfU1RBVEVMRVNTX0dSQU5UIiwiYXV0aF9sZXZlbCI6MCwiYXVkaXRUcmFja2luZ0lkIjoiZmZmMDljNjctZGVjOS00OGIyLWIxNWMtNjljZjI0OTk4OTA1LTEyNDI2MCIsInN1Ym5hbWUiOiI4NWRmM2JiMC04MGRkLTRkMTAtYWE3MC1jZWY5MWExZWY5NTciLCJpc3MiOiJodHRwczovL29wZW5hbS1keC1rbDAzLmZvcmdlYmxvY2tzLmNvbTo0NDMvYW0vb2F1dGgyIiwidG9rZW5OYW1lIjoiYWNjZXNzX3Rva2VuIiwidG9rZW5fdHlwZSI6IkJlYXJlciIsImF1dGhHcmFudElkIjoiU1lETzYweGQ4eG5YYnAyYzNBYkJpS0F3MmVnIiwiYXVkIjoiaWRtQWRtaW5DbGllbnQiLCJuYmYiOjE2NzMwNDM5OTEsImdyYW50X3R5cGUiOiJhdXRob3JpemF0aW9uX2NvZGUiLCJzY29wZSI6WyJmcjppZG06KiJdLCJhdXRoX3RpbWUiOjE2NzMwNDM1MTIsInJlYWxtIjoiLyIsImV4cCI6MTY3MzA0NzU5MSwiaWF0IjoxNjczMDQzOTkxLCJleHBpcmVzX2luIjozNjAwLCJqdGkiOiJTN0kwZThMR2poVWp1NkZ0N3NqSWNDdnotQ2sifQ.iE5n1lZav7ITdedWXGeGtAG6jULLzxSlhQwyfQz4yBR6LOsrjcRk9sa-ULuTiWET51mRGsyTzbSpjhxk0FkN3AjWCqgDaltRoI4x2P3j-Q-jhmGschTiVksI0XNDiWkEbqhTj-cYSO0SazbTNKD3r5kkhhU3II7dgvX3dcBIzLXydqDwbALPzCHJAoeWO1Q-Sf7bt6EMZmCMy2g9Nf3lzVa3q9RH3j65iyyMmPvJLu-SUnwQZr2JAJS_0a9cTB2UL_bVo2tC9WNkdCoQ_952Bdzv-_txWkDl-6paHDUeeZegq2CK4t4ldh3RYdbFZVoMlrPM32fHWxaT0T2MSWMLNA' \
+-H 'Authorization: Bearer eyJ0eXAi...2MSWMLNA' \
 -H 'Content-Length: 0'
 ```
 
@@ -314,7 +316,7 @@ Java RCS deployed in a Docker container will run in a remote Java Virtual Machin
 
     You can specify the JDWP options in a few alternative ways:
 
-    * Engage the ICF defaults.
+    * Engage the Identity Connector Framework (ICF) defaults.
 
         You could rely on the default JDWP options defined for the RCS Docker container. You can do it by supplying the expected `jpda` argument to the ICF's [Docker ENTRYPOINT](https://docs.docker.com/engine/reference/builder/#entrypoint) script:
 
@@ -885,7 +887,7 @@ Each system action is defined with the following keys:
 
         If there are no actions with "systemType" matching "connectorRef.connectorName", requesting the parent system action will return a 400 error accompanied with the following message:
 
-        > Script ID: `<system-action-scriptId>` for systemType `<connector-name>` is not defined.
+        > Script ID: `<system-action-scriptId>` for systemType `<connection-name>` is not defined.
 
     * <a id="developing-connector-configuration-system-actions-definition-actions-action-type" name="developing-connector-configuration-system-actions-definition-actions-action-type"></a>"actionType"
 
@@ -933,10 +935,10 @@ Each system action is defined with the following keys:
             > You can consult https://www.json.org/json-en.html on the acceptable JSON syntax.
 
 You can use either of the two ways to invoke a scripted system action on a remote connector:
-* [Invoking via REST](#developing-connector-configuration-system-actions-rest)
+* [Invoking via IDM's REST](#developing-connector-configuration-system-actions-rest)
 * [Invoking from IDM Script](#developing-connector-configuration-system-actions-idm-script)
 
-####  <a id="developing-connector-configuration-system-actions-rest" name="developing-connector-configuration-system-actions-rest"></a>Connector Configuration > "systemActions" > Invoking via REST
+####  <a id="developing-connector-configuration-system-actions-rest" name="developing-connector-configuration-system-actions-rest"></a>Connector Configuration > "systemActions" > Invoking via IDM's REST
 
 [Back to Contents](#contents)
 
@@ -944,7 +946,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
 `/openidm/system/<connection-name>`?`_action=script`&`scriptId=<script_id>`[&`arg1=value1`&`arg2=value2` . . . ]\[&`scriptExecuteMode=resource`]
 
-#####  <a id="developing-connector-configuration-system-actions-rest-parts" name="developing-connector-configuration-system-actions-rest-parts"></a>Connector Configuration > "systemActions" > Invoking via REST > Parts of the Request:
+#####  <a id="developing-connector-configuration-system-actions-rest-parts" name="developing-connector-configuration-system-actions-rest-parts"></a>Connector Configuration > "systemActions" > Invoking via IDM's REST > Parts of the Request:
 
 [Back to Contents](#contents)
 
@@ -1300,7 +1302,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
         [rcs] ScriptOnResourceScript.groovy bindings: [scriptArguments:[arg1:value1], scriptText:println 'actionSource bindings: '; println binding.variables; [1, 2, 3];, scriptLanguage:groovy, operation:RUNSCRIPTONRESOURCE, options:OperationOptions: {CAUD_TRANSACTION_ID:1659989514919-55e3d75b5a1adc2a72f9-142363/0/5}, configuration:org.forgerock.openicf.connectors.groovy.ScriptedConfiguration@21fa1b88, log:org.identityconnectors.common.logging.Log@3f3e5b1c]
         ```
 
-        Note that:
+        Note:
 
         * The `operation` type is "RUNSCRIPTONRESOURCE", which corresponds to the [script on resource operation](https://backstage.forgerock.com/docs/idcloud-idm/latest/connector-dev-guide/operations/operation-script-on-resource.html).
 
@@ -1589,7 +1591,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
         > }
         > ```
 
-#####  <a id="developing-connector-configuration-system-actions-rest-execute-modes" name="developing-connector-configuration-system-actions-rest-execute-modes"></a>Connector Configuration > "systemActions" > Invoking via REST > "run on resource" vs "run on connector"
+#####  <a id="developing-connector-configuration-system-actions-rest-execute-modes" name="developing-connector-configuration-system-actions-rest-execute-modes"></a>Connector Configuration > "systemActions" > Invoking via IDM's REST > "run on resource" vs "run on connector"
 
 [Back to Contents](#contents)
 
