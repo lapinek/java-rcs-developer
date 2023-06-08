@@ -1,14 +1,16 @@
 # The Basics of Developing Scripted Connectors for Java Remote Connector Server
 
-In a managed environment that [ForgeRock Identity Cloud](https://backstage.forgerock.com/docs/idcloud/latest/home.html) (Identity Cloud) presents, [syncing identities](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html) via a remote server provides necessary flexibility in integrating your [ForgeRock Identity Platform](https://backstage.forgerock.com/docs/platform) (Platform) with external systems.
+In a managed environment like [ForgeRock Identity Cloud](https://backstage.forgerock.com/docs/idcloud/latest/home.html) (Identity Cloud), [syncing identities](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html) via a remote server provides necessary flexibility in integrating your [ForgeRock Identity Platform](https://backstage.forgerock.com/docs/platform) (Platform) with external systems.
 
-Scripted implementations provide relatively easy way to extend this flexibility further and almost indefinitely, including the option to develop a new connector when the [existing implementations](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/preface.html) do not meet your requirements.
+Scripted solutions present a relatively easy way to extend this flexibility further and almost indefinitely, including the option to develop a new connector when the [available implementations](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/preface.html) do not meet your requirements.
 
-The following content aims to overlay the existing ever-evolving docs with additional details on using the RCS scripting environment for developing connectors based on the [Groovy Connector Toolkit](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html). The primary focus of this writing is providing the building blocks for developing a scripted connector in the context of Identity Cloud, but much of the lower level considerations should be universally applicable to other RCS scripted solutions.
+The following content overlays the existing ever-evolving [official docs](https://backstage.forgerock.com/docs/openicf/latest) with additional details on developing connectors based on the [Groovy Connector Toolkit](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html) for the [Java Remote Connector Server (RCS)](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/remote-connector.html).
+
+Additional information could be also found on the [ForgeRock Backstage](https://backstage.forgerock.com/search/?t=all&q=remote%20connector&page=1&sort=_score:desc&scope=sub) site.
 
 > Use the links under the Contents section to quickly navigate to an area of interest. If you feel lost in a long chapter, navigate to the closest [Back to contents](#contents) link and try again.
 >
-> The quoted paragraphs, such as this one, indicate that that content they provide is supplementary and optional.
+> The quoted paragraphs, such as this one, indicate that the content they provide is supplementary and optional.
 
 ## <a id="contents" name="contents"></a>Contents
 
@@ -93,6 +95,7 @@ The following content aims to overlay the existing ever-evolving docs with addit
                     * ["run on resource"](#developing-connector-configuration-system-actions-idm-script-examples-on-resource)
             * ["run on resource" vs "run on connector"](#developing-connector-configuration-system-actions-execute-modes)
             * [Support in Connectors](#developing-connector-configuration-system-actions-support)
+* [Conclusion](#conclusion)
 
 ## <a id="developing-ide" name="developing-ide"></a>Choosing IDE
 
@@ -5207,3 +5210,9 @@ At the time of writing, the following (Java) connectors have implemented both:
 In addition, the [Salesforce](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/salesforce.html) connector has only "script on connector operation" implemented.
 
 > Although unrelated to Java RCS, [Scripted connectors with PowerShell](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/powershell.html) also support script on connector operation.
+
+## <a id="conclusion" name="conclusion"></a>Conclusion
+
+[Back to Contents](#contents)
+
+We went over some basic details that can help to start developing a Groovy Toolkit-based connector for a Java Remote Connector Server when an existing solution cannot be easily adjusted to meet particular requirements.
