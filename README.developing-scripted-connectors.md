@@ -1,12 +1,12 @@
 # The Basics of Developing Scripted Connectors for Java Remote Connector Server
 
-In a managed environment like [ForgeRock Identity Cloud](https://backstage.forgerock.com/docs/idcloud/latest/home.html) (Identity Cloud), [syncing identities](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html) via a remote server provides necessary flexibility in integrating your [ForgeRock Identity Platform](https://backstage.forgerock.com/docs/platform) (Platform) with external systems.
+In the [ForgeRock Identity Cloud](https://backstage.forgerock.com/docs/idcloud/latest/home.html) (Identity Cloud) managed environment, [syncing identities](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html) via a remote server provides necessary flexibility in integrating the [ForgeRock Identity Platform](https://backstage.forgerock.com/docs/platform) (Platform) with external systems.
 
-Scripted solutions present a relatively easy way to extend this flexibility further and almost indefinitely, including the option to develop a new connector when the [available implementations](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/preface.html) do not meet your requirements.
+Scripted implementations present a relatively easy way to extend this flexibility further and almost indefinitely, including the option to develop a new connector when the [available solutions](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/preface.html) do not meet one's requirements. Thus, a scripted connector can address edge cases, aid with proofing a concept, serve as a demo, and potentially outline future development plans for a standard feature.
 
 The following content overlays the existing ever-evolving [official docs](https://backstage.forgerock.com/docs/openicf/latest) with additional details on developing connectors based on the [Groovy Connector Toolkit](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html) for the [Java Remote Connector Server (RCS)](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/remote-connector.html).
 
-Additional information could be also found on the [ForgeRock Backstage](https://backstage.forgerock.com/search/?t=all&q=remote%20connector&page=1&sort=_score:desc&scope=sub) site.
+Additional information could also be found on the [ForgeRock Backstage](https://backstage.forgerock.com/search/?t=all&q=remote%20connector&page=1&sort=_score:desc&scope=sub) site.
 
 > Use the links under the Contents section to quickly navigate to an area of interest. If you feel lost in a long chapter, navigate to the closest [Back to contents](#heading--contents) link and try again.
 >
@@ -30,7 +30,6 @@ Additional information could be also found on the [ForgeRock Backstage](https://
         * [IDM's REST](#heading--developing-scripted-connectors-groovy-connection-rest)
             * [Create Configuration](#heading--developing-scripted-connectors-groovy-connection-rest-system)
             * [Use a Provisioner File](#heading--developing-scripted-connectors-groovy-connection-rest-provisioner)
-            * [Minimal Configuration](#heading--developing-scripted-connectors-groovy-connection-rest-minimum)
             * [Example](#heading--developing-scripted-connectors-groovy-connection-rest-example)
     * [Schema Script](#heading--developing-scripted-connectors-groovy-schema)
         * [Object Classes](#heading--developing-scripted-connectors-groovy-schema-object-types)
@@ -101,11 +100,11 @@ Additional information could be also found on the [ForgeRock Backstage](https://
 
 [Back to Contents](#heading--contents)
 
-For a Java RCS, you will write scripts in [the Apache Groovy programming language](https://groovy-lang.org/) (Groovy). Consult the [IDE integration support for Groovy](https://groovy-lang.org/ides.html) when you choose your IDE for RCS script development.
+For a Java RCS, you will write scripts in [the Apache Groovy programming language](https://groovy-lang.org/) (Groovy). Consult the [IDE integration support for Groovy](https://groovy-lang.org/ides.html) document when you choose an IDE for your scripted RCS development.
 
 In general, you can get a better support for Groovy in a Java-specialized IDE, like [IntelliJ IDEA](https://www.jetbrains.com/idea/) (IntelliJ).
 
-In a non-Java or a polyglottal IDE, you might be able to effectively maintain your RCS scripts, but Groovy-related features may not be readily available or have limited functionality and support.
+In a non-Java or a polyglottal IDE, you might be able to effectively maintain your RCS scripts, but Groovy-related features may not be readily available or have limited functionality and support available.
 
 > For example, as of this writing, no Groovy debugger extension is available for Visual Code Studio—a very popular code editor. This means that if you want to do remote debugging and attach a debugger to your RCS process, you will have to use something like IntelliJ.
 
@@ -207,7 +206,7 @@ curl 'https://openam-dx-kl03.forgeblocks.com/openidm/system?_action=availableCon
 
 [Back to Contents](#heading--contents)
 
-If an unhandled error occurs in your RCS scripts, depending on the script, it may result in a malformed or blank screen in the UI, an unnecessarily detailed error message sent to the client side, and lack of debug information in the RCS logs.
+If an unhandled exception occurs in your RCS scripts, depending on the script, it may result in a malformed or blank screen in the UI, an unnecessarily detailed error message sent to the client side, and/or lack of debug information in the RCS logs.
 
 Therefore, you should wrap your code with a `try/catch` block, send custom error messages to the logs output, and potentially throw a custom exception.
 
@@ -385,18 +384,14 @@ Methods of the `Log` class add additional information to the output: a timestamp
 
 During the development phase, however, for a quick temporary output, you could use the [println](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/PrintStream.html) method. `System.out.println` will automatically apply `.toString()` method available in all Java objects to the content it outputs. This will allow to print out content of different types of variables without additional processing. It will be up to you to provide any extra info in the output.
 
-> Much of Java functionality is [imported in Groovy by default](https://groovy-lang.org/structure.html#_default_imports), including the `java.lang.*` package where `println` comes from. Hence, you don't need to use the full `System.out.println` statement.
+> Much of the commonly used Java functionality is [imported in Groovy by default](https://groovy-lang.org/structure.html#_default_imports), including the `java.lang.*` package where `println` comes from. Hence, you don't need to use the full `System.out.println` statement.
 
 For example:
 
 `TestScript.groovy`
 
 ```groovy
-try {
-    println operation
-} catch (e) {
-    log.error e.message
-}
+println operation
 ```
 
 `RCS logs`
@@ -405,7 +400,7 @@ try {
 [rcs] TEST
 ```
 
-To outline string values in the content of an object, you can use its [.inspect()](https://docs.groovy-lang.org/latest/html/groovy-jdk/java/lang/Object.html#inspect()) method in Groovy.
+To outline string values in the printed out content of an object, you can use [inspect()](https://docs.groovy-lang.org/latest/html/groovy-jdk/java/lang/Object.html#inspect()) method in Groovy.
 
 For example:
 
@@ -429,7 +424,7 @@ println binding.variables.query().inspect()
 
 Attaching a debugger to your RCS process will allow to pause a connector execution at select break points in your code and inspect the current state of your connector scripting context. Doing so can help to locate and eliminate programming errors.
 
-RCS can be deployed in a [Docker](https://www.docker.com/) container within a [Kubernetes](https://kubernetes.io/) cluster. Java RCS deployed in a Docker container will run in a remote Java Virtual Machine (JVM). In order to attach a debugger to this process from your local development setup, you will need to perform the following steps:
+If your RCS is deployed in a [Docker](https://www.docker.com/) container within a [Kubernetes](https://kubernetes.io/) cluster, it will run in a remote Java Virtual Machine (JVM). In order to attach a debugger to this process from your local development setup, you will need to perform the following steps:
 
 1. Start your RCS JVM with the [Java Debug Wire Protocol (JDWP)](https://docs.oracle.com/en/java/javase/11/docs/specs/jpda/conninv.html#oracle-vm-invocation-options) options.
 
@@ -780,15 +775,15 @@ binding.variables.each { key, value ->
 [rcs] log: org.identityconnectors.common.logging.Log
 ```
 
-> You can request a schema operation after you've registered you connection, as described in the [Registering Connection in IDM](#heading--developing-scripted-connectors-groovy-connection) chapter. The [Schema Script](#heading--developing-scripted-connectors-groovy-schema) chapter provides examples on requesting a schema operation via IDM's APIs, and more general information on [IDM's REST > System Objects endpoints](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html) endpoints is available in the docs.
+> [Registering Connection in IDM](#heading--developing-scripted-connectors-groovy-connection) and [Schema Script](#heading--developing-scripted-connectors-groovy-schema) chapters provide details on enabling and requesting schema operation, which invokes the schema script.
 
 ### <a id="heading--developing-connector-context-globals" name="heading--developing-connector-context-globals"></a>Global Variables
 
 [Back to Contents](#heading--contents)
 
-Bindings, both the `binding` instance and the individual binding properties, behave as global variables. This opens a possibility for reassigning them accidentally and thus breaking something in your code.
+Bindings, both the `binding` instance and the individual variable bindings, behave as global variables. This opens a possibility of reassigning them accidentally and thus breaking something in your code.
 
-To avoid a situation like this in complex and involved scripts, you could reassign variable bindings to the namesake local variables (upfront). You can further clarify bindings' designations by referencing their types.
+To avoid a situation like this in complex and involved scripts, you could reassign variable bindings to the namesake local variables. You can further clarify bindings' designations by referencing their types.
 
 For example:
 
@@ -808,7 +803,7 @@ def log = log as Log
 
 Doing so and adding corresponding dependencies to your scripted connector project can enable your IDE to show bindings' class information and provide additional code completion options.
 
-> For example, [in IntelliJ, you can add your dependencies as modules](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html). Even if you don't manage your connector scripts as a Java project, for the `identityconnectors` and `openicf` packages, you could import `java-framework` and `groovy-common` from [OPENICF/connectors](https://stash.forgerock.org/projects/OPENICF/repos/connectors/browse) and thus allow your IDE to show the additional information about your variables.
+> For example, [in IntelliJ, you can add your dependencies as modules](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html). Even if you don't manage your connector scripts as a Java project, for the `identityconnectors` and `openicf` packages, you could import `java-framework` and `groovy-common` from [OPENICF/connectors](https://stash.forgerock.org/projects/OPENICF/repos/connectors/browse); and thus, allow your IDE to show the additional information about your variables.
 
 ## <a id="heading--developing-scripted-connectors-groovy" name="heading--developing-scripted-connectors-groovy"></a>Scripted Groovy Connector (Toolkit)
 
@@ -816,15 +811,15 @@ Doing so and adding corresponding dependencies to your scripted connector projec
 
 The scripted connectors on a Java connector server are based on the Groovy Connector Toolkit. Out of the box, ICF bundles the following scripted connectors:
 
-* [Groovy](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html) ([non-poolable and poolable connector implementations](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html#groovy-connector-interfaces))
+* [Groovy](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html) (`org.forgerock.openicf.connectors.groovy.Scripted(Poolable)Connector`)
 
     All connector operations are implemented in Groovy, with no built in support for a particular data source type.
 
-* [Scripted REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html)
+* [Scripted REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html) (`org.forgerock.openicf.connectors.scriptedrest.ScriptedRESTConnector`)
 
     The scripts are provided with automatically maintained by ICF customizable connection to a REST interface.
 
-* [Scripted SQL](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-sql.html)
+* [Scripted SQL](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-sql.html) (`org.forgerock.openicf.connectors.scriptedsql.ScriptedSQLConnector`)
 
     The scripts are provided with automatically maintained by ICF connection to a JDBC data source.
 
@@ -832,7 +827,7 @@ The scripted connectors on a Java connector server are based on the Groovy Conne
 
 [Back to Contents](#heading--contents)
 
-A Groovy Toolkit-based connector will perform [ICF Operations](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/groovy-operations.html) with scripts hosted on the connector server. Often, a connector is performing [synchronization and reconciliation](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html) between the target and destination systems that employs many or all of the ICF operations. The location of the scripts needs to be reflected in the connection configuration.
+A Groovy Toolkit-based connector will perform [ICF Operations](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/groovy-operations.html) with scripts hosted on the connector server. Often, a connector is performing [synchronization](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html) between the target and destination systems that employs many or all of the ICF operations. The location of the scripts needs to be reflected in the connection configuration.
 
 > Here, connection configuration is the final JSON sent to the `/openidm/config/provisioner.openicf/<connection-name>` endpoint to register your connector parameters in IDM, as described in [Configure connectors over REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-connector.html#connector-wiz-REST).
 
@@ -902,15 +897,9 @@ Before you can register a connection in IDM, your connector server usually needs
 
     For a functional scripted Groovy connection you MUST have a location registered in "scriptRoots".
 
-    If you only use your connector to execute scripts to "run on connector", as explained in the [Connection Configuration > "systemActions"](#heading--developing-connector-configuration-system-actions) chapter, the string reference saved in "scriptRoots" does not have to be pointing to an actual location.
+    In order to run any scripts hosted on the connector server and referenced in the connection configuration, the scripts MUST exist under a location registered in "scriptRoots".
 
-    However, in order to run any scripts hosted on the connector server _and_ referenced in the connection configuration, which is almost always the case in general and _always_ the case for a [Scripted REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html) connector, the scripts MUST exist under a location registered in "scriptRoots".
-
-    > See the [Minimal Configuration](#heading--developing-scripted-connectors-groovy-connection-rest-minimum) chapter for illustration.
-
-    Some advantages of hosting a script on the connector server are outlined at the end of the ["systemActions" > "run on resource" vs "run on connector"](#heading--developing-connector-configuration-system-actions-execute-modes) chapter.
-
-    If you provide an invalid reference to a script, your connection will fail to be validated.
+    If you provide an invalid reference to a script, your connection configuration will fail to be validated.
 
 * "customizerScriptFileName"
 
@@ -922,21 +911,21 @@ Before you can register a connection in IDM, your connector server usually needs
 
     The file name of a [script implementing the Schema operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-schema.html).
 
-    In order to use your connector for [synchronization and reconciliation](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html), you need a functional schema script correctly referenced in the connection configuration.
-
-    Also, presence of a valid schema script reference is required for registering a [Scripted REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html) connection, although the script itself doesn't have to be functional and can be left empty.
+    In order to use your connector for [synchronization and reconciliation](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html), you need a functional schema script correctly referenced in the connection configuration. Also, a functional schema script returning a schema object is required if you register your connection as described in the [Configure connectors over REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-connector.html#connector-wiz-REST) doc.
 
     Schema script functionality is described in details in the [Schema Script](#heading--developing-scripted-connectors-groovy-schema) chapter, and example implementations can be found in its [Schema Script > Example Schema Script](#heading--developing-scripted-connectors-groovy-schema-example-script) section.
 
 * "searchScriptFileName"
 
-    A connection provides access to a remote system. Normally, it is used for data exchange, where remote data is a list of resources obtained from a [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html). In a Groovy Toolkit connector, the search operation is performed with a [search or query script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-search.html), which is referenced in the connection configuration via the "searchScriptFileName" key.
+    A connection provides access to a remote system. Normally, it is used for data exchange, where remote data is a list of resources obtained from a [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html). In a Groovy Toolkit-based connector, the search operation is performed with a [search or query script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-search.html), which is referenced in the connection configuration via the "searchScriptFileName" key.
 
-    In order to use your connector for the [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html), including CRUD operations and [synchronization and reconciliation](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html), you MUST have a functional search script correctly referenced in the connection configuration.
+    In order to use your connector for the [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html), including CRUD operations and [synchronization](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html), you MUST have a functional search script correctly referenced in the connection configuration.
 
     Search script functionality is described in details in the [Search Script](#heading--developing-scripted-connectors-groovy-search) chapter, and example implementations can be found in the [Example Search Script](#heading--developing-scripted-connectors-groovy-search-example) section.
 
-If you plan to implement any other [ICF operations with Groovy scripts](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/groovy-operations.html), you will need to deploy the corresponding scripts as well. In addition, a UI might impose its own requirements while registering a connection.
+If you plan to implement any other [ICF operations with Groovy scripts](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/groovy-operations.html), you will need to deploy the corresponding scripts as well.
+
+In addition, a UI might impose its own requirements while registering a connection.
 
 #### <a id="heading--developing-scripted-connectors-groovy-connection-platform-ui" name="heading--developing-scripted-connectors-groovy-connection-platform-ui"></a>Scripted Connectors > Registering Connection in IDM > Platform UI
 
@@ -964,13 +953,69 @@ As described in the [Configure connectors over REST](https://backstage.forgerock
 
 1. Using the connector reference, request the connector's core configuration from `/openidm/system?_action=createCoreConfig`.
 
-1. Update the core configuration with your RCS specifics, and get the full connector configuration from `/openidm/system?_action=createFullConfig`.
+1. Update the core configuration with your RCS specifics, and get the full connection configuration from `/openidm/system?_action=createFullConfig`.
 
     Optionally, update the full connector configuration with entries not provided by default, such as ["systemActions"](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html#runscriptonconnector).
 
 1. Using the full configuration, register a connection at its designated configuration endpoint: `/openidm/config/provisioner.openicf/<connection-name>`.
 
 As explained in the [Scripted Groovy Connector (Toolkit) > Deployment Requirements](#heading--developing-scripted-connectors-groovy-connection-requirements) chapter, in the Step 3 of this process, under the "configurationProperties" key, you will need to provide a "scriptRoots" entry and valid references to the scripts that you plan to employ in your connector.
+
+To create a full connection configuration in the Step 3, at a minimum, you will need to update the core config with the following references:
+
+* `org.forgerock.openicf.connectors.groovy.ScriptedConnector`
+
+    * "configurationProperties.scriptRoots"
+
+    * "configurationProperties.schemaScriptFileName"
+
+        The referenced schema script file MUST exist under a location listed in "scriptRoots" and the script MUST return a schema object, as described in the the [Schema Script](#heading--developing-scripted-connectors-groovy-schema) chapter.
+
+* `org.forgerock.openicf.connectors.scriptedrest.ScriptedRESTConnector`
+
+    * "configurationProperties.serviceAddress"
+
+    * "coreConfig.configurationProperties.username"
+
+    * "configurationProperties.password"
+
+    * "configurationProperties.scriptRoots"
+
+    * "configurationProperties.customizerScriptFileName"
+
+        The referenced customizer script file MUST exist under a location listed in "scriptRoots" and the script MUST define the `init` closure. Which means it needs to call `customize` method, pass in a closure, inside which it needs to call `init` method and pass in a closure (in which the HTTP client used in the connector's scripts could be customized).
+
+        For example:
+
+        ```groovy
+        customize {
+            init {
+                [ . . . ]
+            }
+        }
+        ```
+
+    * "configurationProperties.schemaScriptFileName"
+
+        The referenced schema script file MUST exist under a location listed in "scriptRoots" and the script MUST return a schema object, as described in the the [Schema Script](#heading--developing-scripted-connectors-groovy-schema) chapter.
+
+* `org.forgerock.openicf.connectors.scriptedsql.ScriptedSQLConnector`
+
+    * "configurationProperties.url"
+
+    * "configurationProperties.username"
+
+    * "configurationProperties.password"
+
+    * "configurationProperties.driverClassName"
+
+    * "configurationProperties.scriptRoots"
+
+    * "configurationProperties.schemaScriptFileName"
+
+        The referenced schema script file MUST exist under a location listed in "scriptRoots" and the script MUST return a schema object, as described in the the [Schema Script](#heading--developing-scripted-connectors-groovy-schema) chapter.
+
+    Note that a functional Scripted SQL connector configuration requires valid connection parameters _and_ a functional connection they refer to.
 
 ##### <a id="heading--developing-scripted-connectors-groovy-connection-rest-provisioner" name="heading--developing-scripted-connectors-groovy-connection-rest-provisioner"></a>Scripted Connectors > Registering Connection in IDM > IDM's REST > Use a Provisioner File
 
@@ -994,134 +1039,7 @@ curl \
 "$TENANT_ORIGIN/openidm/config/provisioner.openicf/$2" -i
 ```
 
-##### <a id="heading--developing-scripted-connectors-groovy-connection-rest-minimum" name="heading--developing-scripted-connectors-groovy-connection-rest-minimum"></a>Scripted Connectors > Registering Connection in IDM > IDM's REST > Minimal Configuration
-
-[Back to Contents](#heading--contents)
-
-As outlined in the [Scripted Groovy Connector (Toolkit) > Deployment Requirements](#heading--developing-scripted-connectors-groovy-connection-requirements) chapter, if you only want to perform arbitrary operations behind the remote source authorization walls, a provisioner configuration file for a functional Groovy Toolkit connection may contain minimal or no reference to the connector server file system.
-
-For illustration, below you can find minimal configuration examples for the three scripted connector types:
-
-* [Scripted Groovy](https://backstage.forgerock.com/docs/idcloud/latest/app-management/provision-an-application.html#scripted_groovy)
-
-    `provisioner.openicf-groovy-min.json`
-
-    ```json
-    {
-        "connectorRef": {
-            "connectorHostRef": "rcs",
-            "bundleVersion": "1.5.20.15-SNAPSHOT",
-            "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
-            "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
-        },
-        "configurationProperties": {
-            "scriptRoots": [
-                ""
-            ]
-        },
-        "systemActions": [
-            {
-                "scriptId": "script-1",
-                "actions": [
-                    {
-                        "systemType": ".*ScriptedConnector",
-                        "actionType": "groovy",
-                        "actionSource": "true"
-                    }
-                ]
-            }
-        ]
-    }
-    ```
-
-    By registering this connection definition, you will be able to request a "run on connector" system action and execute script(s) defined in its "actionSource" key, as described in the [Connector Configuration > "systemActions"](#heading--developing-connector-configuration-system-actions) chapter, _without_ deploying anything on the connector server.
-
-    However, if you need to use any [ICF operations with Groovy scripts](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/groovy-operations.html), including the "run on resource" system action, or perform [custom configuration initialization](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/advanced-custom-config.html) you will need to provide a valid "scriptRoots" location, the actual scripts, and the corresponding script file references.
-
-* [Scripted REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html)
-
-    `provisioner.openicf-rest-min.json`
-
-    ```json
-    {
-        "connectorRef": {
-            "bundleName": "org.forgerock.openicf.connectors.scriptedrest-connector",
-            "bundleVersion": "1.5.20.15-SNAPSHOT",
-            "connectorHostRef": "rcs",
-            "connectorName": "org.forgerock.openicf.connectors.scriptedrest.ScriptedRESTConnector"
-        },
-        "configurationProperties": {
-            "scriptRoots": [
-                "/opt/openicf/scripts/rest-min"
-            ],
-            "customizerScriptFileName": "CustomizerScript.groovy",
-            "schemaScriptFileName": "SchemaScript.groovy",
-            "serviceAddress": "",
-            "username": "username",
-            "password": "password"
-        },
-        "systemActions": [
-            {
-                "scriptId": "script-1",
-                "actions": [
-                    {
-                        "systemType": ".*ScriptedRESTConnector",
-                        "actionType": "groovy",
-                        "actionSource": "true"
-                    }
-                ]
-            }
-        ]
-    }
-    ```
-
-    Note that for a functional Scripted REST connector you MUST deploy a [customizer script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/advanced-custom-config.html) and a [schema script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-schema.html), and the former must at a minimum define a closure passed into the [init(Closure closure)](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html#scripted-rest-customizer) method:
-
-    ```groovy
-    customize {
-        init {
-            [ . . . ]
-        }
-    }
-    ```
-
-* [Scripted SQL](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-sql.html)
-
-    `provisioner.openicf-sql-min.json`
-
-    ```json
-    {
-        "connectorRef": {
-            "connectorHostRef": "rcs",
-            "bundleVersion": "1.5.20.15-SNAPSHOT",
-            "bundleName": "org.forgerock.openicf.connectors.scriptedsql-connector",
-            "connectorName": "org.forgerock.openicf.connectors.scriptedsql.ScriptedSQLConnector"
-        },
-        "configurationProperties": {
-            "scriptRoots": [
-                ""
-            ],
-            "url": "jdbc:postgresql://postgresql:5432/hrdb",
-            "username": "openidm",
-            "password": "openidm",
-            "driverClassName": "org.postgresql.Driver"
-        },
-        "systemActions": [
-            {
-                "scriptId": "script-1",
-                "actions": [
-                    {
-                        "systemType": ".*ScriptedSQLConnector",
-                        "actionType": "groovy",
-                        "actionSource": "true"
-                    }
-                ]
-            }
-        ]
-    }
-    ```
-
-    Note that a functional Scripted SQL connector configuration requires valid connection parameters and a functional connection.
+> You can also craft your provisioner file manually, which is even less restrictive than creating the full connection configuration in the [Configure connectors over REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-connector.html#connector-wiz-REST) process.
 
 ##### <a id="heading--developing-scripted-connectors-groovy-connection-rest-example" name="heading--developing-scripted-connectors-groovy-connection-rest-example"></a>Scripted Connectors > Registering Connection in IDM > IDM's REST > Example
 
@@ -1267,7 +1185,7 @@ For example:
 }());
 ```
 
-You can also update an existing connection by using its configuration endpoint.
+You can update an existing connection by using its configuration endpoint.
 
 For example:
 
@@ -1328,7 +1246,7 @@ For example:
 
 [Back to Contents](#heading--contents)
 
-In order to be useful, your [schema script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-schema.html) MUST return an instance of [Schema](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Schema.html).
+In order to be functional, your [schema script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-schema.html) MUST return an instance of [Schema](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Schema.html).
 
 The schema instance MUST be populated with one or more instances of [ObjectClassInfo](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/ObjectClassInfo.html), each representing a data object class (type) that you decided to expose via your connector.
 
@@ -1919,7 +1837,7 @@ With this schema script, your search script is expected to handle the remote [Us
 
 [Back to Contents](#heading--contents)
 
-If you plan to use [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html) against your connector—for example, for [synchronization and reconciliation](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html)—your search script needs to respond with available data. In order to be completely usable by IDM, a search script should implement filtering, sorting, and paging according to the criteria that was included in a search operation request and delivered to the script via its bindings.
+If you plan to use [search operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-search.html) against your connector—for example, for [synchronization](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html)—your search script needs to respond with available data. In order to be completely usable by IDM, a search script should implement filtering, sorting, and paging according to the criteria that was included in a search operation request and delivered to the script via its bindings.
 
 To start working on your [search script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-search.html), you can deploy an empty one, so that you can reference it from your connection configuration, as described in the [Registering Connection in IDM](#heading--developing-scripted-connectors-groovy-connection) chapter. An empty search script that does not handle any data will mean query and read operations within IDM will always return an empty dataset.
 
@@ -2521,7 +2439,7 @@ Correctly built and accepted by IDM's APIs query definition will be used to popu
 
 * Methods of a [filter](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/filter/Filter.html) object can be used to produce different representations of the search parameters, such as an SQL string or a map, by accepting custom implementations of [FilterVisitor](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/filter/FilterVisitor.html).
 
-    > The scripted example of MySQL connector, which could be found under the `/samples` folder in an IDM installation or in the [General Access > connectors-customers-ga](https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse/scriptedsql-connector/src/test/resources/mysql_sample/SearchScript.groovy?at=1.5.20.13#98) repository, demonstrates how filter criteria can be converted into an SQL statement.
+    > The scripted example of MySQL connector, which could be found in [Samples provided with IDM](https://backstage.forgerock.com/docs/idm/7.3/samples-guide/samples-provided.html) or in the [General Access Connectors](https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse/scriptedsql-connector/src/test/resources/mysql_sample/SearchScript.groovy?at=1.5.20.13#98) repository, demonstrates how filter criteria can be converted into an SQL statement.
 
 * The `query` binding is a [Closure](https://groovy-lang.org/closures.html), which returns a map of search parameters from the `filter` object.
 
@@ -3079,12 +2997,7 @@ The example script serves illustration purposes; modify and optimize it for your
  *                  @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html}
  * Returns          org.identityconnectors.framework.common.objects.SearchResult
  *                  @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/SearchResult.html}
- * References:
- * @see {@link https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-search.html}
- * @see {@link https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/queries.html}
- * @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/index.html}
- * @see {@link https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse?at=refs%2Ftags%2F1.5.20.14}
- * @see {@link https://docs.groovy-lang.org/}
+ *
  */
 
 import org.identityconnectors.framework.common.objects.SearchResult
@@ -3505,6 +3418,87 @@ try {
 }
 ```
 
+### <a id="heading--developing-scripted-connectors-groovy-test" name="heading--developing-scripted-connectors-groovy-tests"></a>Scripted Groovy Connector (Toolkit) > Test Script
+
+[Back to Contents](#heading--contents)
+
+A [test script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-test.html) implements the [test operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-test.html). In scripted Groovy connectors, the test operation always validates the connector configuration first; if a test script reference has been found in the configuration, the script is executed.
+
+The test operation is called by IDM at the time a connection is registered, and an admin UI can call it at different times in the connection life cycle.
+
+This means that you have an option to use a test script for any connection validation that your particular use case requires. One common application is checking the data source availability.
+
+To indicate a failure, the test script must throw an exception. If available, the exception should be a specific one, or you could throw a generic [ConnectorException](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/exceptions/ConnectorException.html).
+
+For example:
+
+`TestScript.groovy`
+
+```groovy
+/**
+ * Defined variables:
+ * operation        org.forgerock.openicf.connectors.groovy.OperationType
+ *                  The SEARCH operation type.
+ * configuration    org.forgerock.openicf.connectors.groovy.ScriptedConfiguration
+                    The connector configuration properties.
+ *                  @see {@link https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html#groovy-connector-configuration}
+ * log              org.identityconnectors.common.logging.Log
+ *                  Logging facility.
+ *                  @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html}
+ */
+
+def usersJsonFile = new File('/usr/local/src/users.json')
+
+if (!usersJsonFile.exists()) {
+    throw new MissingResourceException('Resources not found.', operation.name(), 'users.json')
+}
+```
+
+If no exception is thrown, the response JSON will contain an "ok" key populated with `true`.
+
+If there is an exception, the "ok" key will be populated with `false` and accompanied with an error message that you specified in the exception.
+
+For example:
+
+`IDM Admin Browser Console`
+
+```javascript
+(async function () {
+    var data = await $.ajax('/openidm/system/groovyCore?_action=test', {
+        method: 'POST'
+    });
+
+    console.log(JSON.stringify(data, null, 4));
+}());
+```
+
+```json
+{
+    "name": "groovy",
+    "enabled": true,
+    "config": "config/provisioner.openicf/groovy",
+    "connectorRef": {
+        "connectorHostRef": "rcs",
+        "bundleVersion": "1.5.20.15-SNAPSHOT",
+        "bundleName": "org.forgerock.openicf.connectors.groovy-connector",
+        "connectorName": "org.forgerock.openicf.connectors.groovy.ScriptedConnector"
+    },
+    "displayName": "Scripted Groovy Connector",
+    "objectTypes": [
+        "groups",
+        "__ACCOUNT__",
+        "__ALL__",
+        "users"
+    ],
+    "error": "Resources not found.",
+    "ok": false
+}
+```
+
+If supported, the error will also be displayed in the UI.
+
+Note that a test script will have access to the connector's configuration. A test script for Scripted SQL connector will also have a `connection` binding representing the JDBC data source. A test script for Scripted REST will have `connection` and `customizedConnection` bindings representing the HTTP client and its decorated version injected into the scripts for connecting to the REST interface.
+
 ### <a id="heading--developing-connector-bindings" name="heading--developing-connector-bindings"></a>Scripted Groovy Connector (Toolkit) > Bindings
 
 [Back to Contents](#heading--contents)
@@ -3630,7 +3624,9 @@ Most of this content corresponds directly to the keys in the connection configur
 
 [Back to Contents](#heading--contents)
 
-If you need to keep a custom global reference accessible from any connector script, you can save it in the `configuration.propertyBag` property, which is a map.
+If you need to keep a custom global reference accessible from any connector script, you can save it in the `configuration.propertyBag` property, which is a map. This will allow to dynamically define, cache, and share within a connector instance anything that can be passed as a variable: a primitive or a reference to an object, such as a map or a closure.
+
+The content saved in `configuration.propertyBag` will be reset when "configurationProperties.customConfiguration" and "configurationProperties.customSensitiveConfiguration" properties have been changed in the connection configuration, the RCS is restarted, or the IDM connector instance service (OSGi) is restarted.
 
 You can populate `configuration.propertyBag` at different stages of a connector life cycle:
 
@@ -3654,9 +3650,7 @@ In connector implementations based on the [Scripted Groovy Connector Toolkit](ht
 
 You can use [custom configuration initialization](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/advanced-custom-config.html) in the connector server environment via a script referenced under the "configurationProperties.customizerScriptFileName" key in a connection configuration.
 
-> The custom configuration initialization is also supported for [Marketo](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/marketo.html) and [SSH](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/ssh.html) connectors.
-
-During the initialization process, the customizer script will have access to the configuration instance and can be used to update `configuration.propertyBag` content, which will become globally available for all the scripts implementing ICF operations at runtime before any of the operations are performed.
+During the initialization process, the customizer script will have access to the configuration instance and can be used to update `configuration.propertyBag` content, which will become globally available for all the scripts implementing ICF operations at runtime.
 
 > Note that while a stateful connector configuration is initialized only once, the customizer script runs every time when the corresponding connection configuration is updated in IDM; you can leverage this fact while developing your customizer script functionality.
 
@@ -3710,19 +3704,15 @@ Everything said in regard to `configuration.propertyBag` in a plain Groovy conne
 
 [Back to Contents](#heading--contents)
 
-An extended implementation of a Groovy Toolkit-based connector can provide additional functionality in the customizer script context and support additional customizations.
-
 [Scripted REST connector](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html) does not define `configuration` binding in the top-level scope of its customizer script. Instead, it allows to use `init`, `decorate`, and `release` methods inside a closure passed into the `customize` method, which is defined in the script's top-level scope.
 
-The `init` method accepts a closure, in which you can customize a passed in [HTTPClientBuilder](https://hc.apache.org/httpcomponents-client-4.5.x/current/httpclient/apidocs/org/apache/http/impl/client/HttpClientBuilder.html) instance. The `init` closure runs when the connector configuration is initialized.
+The `init` method accepts a closure, in which you can configure a passed in [HTTPClientBuilder](https://hc.apache.org/httpcomponents-client-4.5.x/current/httpclient/apidocs/org/apache/http/impl/client/HttpClientBuilder.html) instance, which will be used to build customized [CloseableHttpClient](https://hc.apache.org/httpcomponents-client-4.5.x/current/httpclient/apidocs/org/apache/http/impl/client/CloseableHttpClient.html). The `init` closure runs when the connector configuration is initialized.
 
-The `decorate` method accepts a closure in which you can customize an instance of [CloseableHttpClient](https://hc.apache.org/httpcomponents-client-4.5.x/current/httpclient/apidocs/org/apache/http/impl/client/CloseableHttpClient.html) built with the HTTPClientBuilder. Then, your customized HTTP client is provided as the `customizedConnection` binding for making requests in connector's scripts. The decorate closure runs on any ICF operation.
+The `decorate` method accepts a closure in which you can customize further an instance of the HTTP client built with the HTTPClientBuilder. Then, the HTTP client is provided as the `customizedConnection` binding for making requests in the connector's scripts. The decorate closure runs on every ICF operation.
 
-The `release` closure runs when the connector is disposed.
+> The `release` closure runs when the stateful configuration is released. It could be used to dispose any custom objects not handled by the ICF. Otherwise you don not need to call the release method.
 
-> Unless you define temporary resources outside of ICF, you might not need to call the `release` method, which takes a closure to run when the connector is disposed.
-
-The closures passed into `init`, `decorate`, and `release` methods have their [delegates](https://groovy-lang.org/closures.html#_delegation_strategy) assigned an instance of the `org.forgerock.openicf.connectors.scriptedrest.ScriptedRESTConfiguration` class, which functionally extends `org.forgerock.openicf.connectors.groovy.ScriptedConfiguration` and thus, provides access to `propertyBag` and the other connector's configuration properties.
+The closures passed into `init`, `decorate`, and `release` methods have their [delegates](https://groovy-lang.org/closures.html#_delegation_strategy) assigned an instance of the `org.forgerock.openicf.connectors.scriptedrest.ScriptedRESTConfiguration` class, which extends `org.forgerock.openicf.connectors.groovy.ScriptedConfiguration` and thus provides access to `propertyBag` and the other connector's configuration properties.
 
 This means that in the `init` closure you can update the `propertyBag` content during the connector configuration initialization and before any scripted ICF operations are performed, and in the `decorate` closure, you can update the `propertyBag` content at runtime.
 
@@ -3756,7 +3746,7 @@ customize {
 }
 ```
 
-Comprehensive examples of customizer script for scripted REST connector could be found in an IDM installation under the `/samples` folder, in the accessible for ForgeRock customers [General Access > connectors-customers-ga](https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse/scriptedrest-connector/src/test/resources/mock?at=refs%2Ftags%2F1.5.20.15) repository, and in the [Scripted REST connector](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html) documentation. In particular, the OAuth2 Authentication Implementation example demonstrates how custom authorization could be implemented when the connector is initialized, and how resulting from it access tokens can be saved in `propertyBag` and shared with scripts performing data operations at runtime.
+Comprehensive examples of customizer script for scripted REST connector could be found in an IDM installation in [Samples provided with IDM](https://backstage.forgerock.com/docs/idm/7.3/samples-guide/samples-provided.html), in the accessible for ForgeRock customers [General Access Connectors](https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse/scriptedrest-connector/src/test/resources/mock?at=refs%2Ftags%2F1.5.20.15) repository, and in the [Scripted REST connector](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html) documentation. In particular, the OAuth2 Authentication Implementation example demonstrates how OAuth 2.0 authorization could be performed, and how resulting from it access tokens can be saved in `propertyBag` and shared with the scripts performing data operations.
 
 > Having the `ScriptedRESTConfiguration` instance as the delegate and as the enclosing class for the closures, you could access its properties directly. However, for the reasons explained in [Scripting Context > Global Variables](#heading--developing-connector-context-globals), and as shown in official examples shipped with IDM, you might want to reassign your delegate to a variable of this particular, `ScriptedRESTConfiguration` type.
 >
@@ -3811,11 +3801,7 @@ For example:
 configuration.propertyBag.myCustomProperties.count += 1
 ```
 
-This will allow to dynamically define, cache, and share within a connector instance anything that can be passed as a variable: a primitive or a reference to an object, including a closure.
-
-It should be noted that while some other configuration properties can be changed from a script with immediate effect, you should limit your runtime customizations to the designated area that `configuration.propertyBag` is.
-
-The content saved in `configuration.propertyBag` will be reset when "configurationProperties.customConfiguration" and "configurationProperties.customSensitiveConfiguration" properties have been changed in the connection configuration, the RCS is restarted, or the IDM connector instance service (OSGi) is restarted.
+It should be noted that while some other configuration properties can be changed from a script with immediate effect, you should limit your runtime configuration customizations to the designated area that `configuration.propertyBag` is.
 
 ### <a id="heading--developing-connector-configuration" name="heading--developing-connector-configuration"></a>Scripted Groovy Connector (Toolkit) > Connection Configuration
 
@@ -4498,7 +4484,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
     ```
 
 
-* <a id="heading--developing-connector-configuration-system-actions-rest-parts-execute-mode" name="heading--developing-connector-configuration-system-actions-rest-parts-execute-mode"></a>`&scriptExecuteMode=resource` (optional and IMPORTANT)
+* <a id="heading--developing-connector-configuration-system-actions-rest-parts-execute-mode" name="heading--developing-connector-configuration-system-actions-rest-parts-execute-mode"></a>`&scriptExecuteMode=resource` (optional and important)
 
     [Back to Contents](#heading--contents)
 
@@ -5068,21 +5054,17 @@ But the way your script content is used is different in the two modes:
 
     If `scriptText` contains a script to evaluate, its bindings can be defined only by the hosted on RCS script. As an example, the hosted on RCS script can share its own bindings defined by the ICF framework.
 
-In a managed environment such as the Identity Cloud, you cannot host a custom script file and reference it in "actionFile". Your system action-specific script content is limited to "actionSource". Arguably, in this case, a more practical approach to perform a custom system action of any considerable complexity is executing a "run on resource" script, which will enable you to maintain it in a separate file.
-
-The "run on resource" script execution mode could also be more efficient than the "run on connector" one because:
+The "run on resource" script execution mode could be more efficient than the "run on connector" one because:
 
 * The hosted script is loaded, compiled, and cached once, when the connector is activated, while an "actionSource" or an "actionFile" script is evaluated every time a "run on connector" action is called.
 
 * The hosted script doesn't have to be transmitted from IDM to RCS, while the "actionSource" or "actionFile" content does.
 
-> As an example of a script running in the connector server environment, the following a system action will:
+In addition, in a managed environment such as the Identity Cloud, you cannot host a custom script file and reference it in "actionFile". Your system action-specific script content is limited to "actionSource". Arguably, in this case, a more practical approach to perform a custom system action of any considerable complexity is executing a "run on resource" script, which will enable you to maintain the scripted functionality in separate file(s) hosted on the connector server.
+
+> It is possible to run any arbitrary script maintained outside of the connection configuration "on connector" by providing the script content in the request body and evaluating it in the "actionSource" script. The script will have access to all other arguments and to `RUNSCRIPTONCONNECTOR` bindings, but the same maintainability concerns might apply.
 >
-> * Write content received in its parameters to the connector server file system.
->
-> * Collect some system-specific information.
->
-> * Execute an arbitrary script, which makes a network request (in this case, with native Groovy means), on the connector server in the connector environment.
+> For example:
 >
 > `provisioner.openicf-<connection-name>.json`
 >
@@ -5091,18 +5073,8 @@ The "run on resource" script execution mode could also be more efficient than th
 >     [ . . . ],
 >     "systemActions": [
 >         {
->             "scriptId": "script-1",
+>             "scriptId": "script-2",
 >             "actions": [
->                 {
->                     "systemType": ".*ScriptedConnector",
->                     "actionType": "groovy",
->                     "actionSource": "new File('/usr/local/src/config.json').text = config;"
->                 },
->                 {
->                     "systemType": ".*Scripted.*Connector",
->                     "actionType": "groovy",
->                     "actionSource": "[ connectorDateTime: java.time.LocalDateTime.now().toString(), openicfOpts: System.getenv('OPENICF_OPTS'), systemId: new File('/sys/class/dmi/id/product_uuid').getText().trim()]"
->                 },
 >                 {
 >                     "systemType": ".*ScriptedConnector",
 >                     "actionType": "groovy",
@@ -5114,68 +5086,23 @@ The "run on resource" script execution mode could also be more efficient than th
 > }
 > ```
 >
-> Assuming the following request for the actions to "run on connector":
->
 > `IDM Admin Browser Console`
 >
 > ```javascript
 > (async function () {
->     var data = await $.ajax('/openidm/system/groovy?_action=script&scriptId=script-1', {
+>     var data = await $.ajax('/openidm/system/groovy?_action=script&scriptId=script-2', {
 >         method: 'POST',
 >         headers: {
 >             'Content-Type': 'application/json'
 >         },
 >         data: JSON.stringify({
->             config: {
->                 key1: 'value1',
->                 key2: {
->                     key3: 'value3'
->                 }
->             },
->             requestParameters: {
->                 path: '/users',
->                 method: 'POST',
->                 headers: {
->                     "Content-Type": "application/json"
->                 },
->                 body: JSON.stringify({
->                     "userName": "bjensen",
->                     "displayName": "Ms. Barbara J Jensen III",
->                     "name": {
->                         "familyName": "Jensen",
->                         "givenName": "Barbara",
->                         "middleName": "Jane"
->                     },
->                     "emails": [
->                         {
->                             "value": "bjensen@example.com",
->                             "type": "work",
->                             "primary": true
->                         },
->                         {
->                             "value": "babs@jensen.org",
->                             "type": "home"
->                         }
->                     ],
->                 })
+>             params: {
+>                 param1: 2,
+>                 param2: 2
 >             },
 >             connectorScript: `
->             	import groovy.json.JsonSlurper
->                 def jsonSlurper = new JsonSlurper()
->                 def apiConfig = jsonSlurper.parseText(new File('/usr/local/src/api-config.json').text.trim());
->                 def baseUrl = apiConfig.baseUrl
->                 println apiConfig
->                 def request = new URL("$baseUrl$requestParameters.path").openConnection()
->                 request.setRequestMethod requestParameters.method
->                 requestParameters.headers.each {
->                 	request.setRequestProperty it.key, it.value
->                 }
->                 request.setRequestProperty 'X-API-Key', apiConfig.apiKey
->                 request.setDoOutput true
->                 request.getOutputStream().write(requestParameters.body.getBytes('UTF-8'))
->                 if (request.responseCode == 201) {
->                    jsonSlurper.parseText(request.inputStream.text)
->                 }
+>                 // Any Groovy script:
+>                 params.param1 + params.param2
 >             `
 >         })
 >     });
@@ -5184,67 +5111,15 @@ The "run on resource" script execution mode could also be more efficient than th
 > }());
 > ```
 >
-> For illustration, the response might contain results similar to the following:
->
 > ```json
 > {
 >     "actions": [
 >         {
->             "result": {
->                 "key1": "value1",
->                 "key2": {
->                     "key3": "value3"
->                 }
->             }
->         },
->         {
->             "result": {
->                 "systemId": "7d637717-e38c-662e-e278-dfe440000859",
->                 "connectorDateTime": "2023-05-30T15:18:34.948126",
->                 "openicfOpts": "-Dconnectorserver.connectorServerName=rcs-0 -Dconnectorserver.url=wss://openam-dx-kl04.forgeblocks.com/openicf/0 -Dconnectorserver.tokenEndpoint=https://openam-dx-kl04.forgeblocks.com/am/oauth2/realms/root/realms/alpha/access_token -Dconnectorserver.clientId=RCSClient -Dconnectorserver.clientSecret=Up0N4Tt95@Mr576A -agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=n"
->             }
->         },
->         {
->             "result": {
->                 "emails": [
->                     {
->                         "type": "work",
->                         "value": "bjensen@example.com",
->                         "primary": true
->                     },
->                     {
->                         "type": "home",
->                         "value": "babs@jensen.org"
->                     }
->                 ],
->                 "displayName": "Ms. Barbara J Jensen III",
->                 "name": {
->                     "familyName": "Jensen",
->                     "givenName": "Barbara",
->                     "middleName": "Jane"
->                 },
->                 "id": 11,
->                 "userName": "bjensen"
->             }
+>             "result": 4
 >         }
 >     ]
 > }
 > ```
->
-> For the same system action to "run on resource" (with the `&scriptExecuteMode=resource` argument), you would need to pass the script arguments to the scripts being evaluated:
->
-> `ScriptOnResourceScript.groovy`
->
-> ```groovy
-> Binding binding = new Binding()
-> binding.setVariable('config', scriptArguments.config)
-> binding.setVariable('requestParameters', scriptArguments.requestParameters)
-> binding.setVariable('connectorScript', scriptArguments.connectorScript)
->
-> new GroovyShell(binding).evaluate(scriptText)
-> ```
->
-> The individual actions defined under this system action example are unrelated and serve only illustrational purposes.
 
 ##### <a id="heading--developing-connector-configuration-system-actions-support" name="heading--developing-connector-configuration-system-actions-support"></a>Scripted Groovy Connector (Toolkit) > Connection Configuration > "systemActions" > Support in Connectors
 
