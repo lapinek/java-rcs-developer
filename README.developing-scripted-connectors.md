@@ -60,6 +60,7 @@ Additional information could also be found on the [ForgeRock Backstage](https://
         * [Attributes to Get](#heading--developing-scripted-connectors-groovy-search-attributes)
         * [Example Search Script](#heading--developing-scripted-connectors-groovy-search-example)
             * [Flat Representation of Data](#heading--developing-scripted-connectors-groovy-search-example-flat)
+    * [Test Script](#heading--developing-scripted-connectors-groovy-test)
     * [Bindings](#heading--developing-connector-bindings)
         * [configuration](#heading--developing-connector-bindings-configuration)
             * [configuration.propertyBag](#heading--developing-connector-bindings-configuration-property-bag)
@@ -1272,7 +1273,7 @@ When a connection is registered, as described in the [Registering Connection in 
 
 `/openidm/system/<connection-name>?_action=schema`
 
-> You cannot request a connector schema from an IDM script, because `schema` action in scripts is not supported on system resources.
+> You cannot request a connector schema from an IDM script, because [`schema` action in scripts is not supported on system resources](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html).
 
 For example:
 
@@ -4251,6 +4252,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
     Requesting this action via IDM's REST could be done in the following way:
 
     `IDM Admin Browser Console`
+
     ```javascript
     (async function () {
         var data = await $.ajax('/openidm/system/groovy?_action=script&scriptId=script-1', {
