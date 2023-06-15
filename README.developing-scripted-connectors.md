@@ -96,6 +96,7 @@ Additional information could also be found on the [ForgeRock Backstage](https://
             * ["run on resource" vs "run on connector"](#heading--developing-connector-configuration-system-actions-execute-modes)
             * [Support in Connectors](#heading--developing-connector-configuration-system-actions-support)
 * [Conclusion](#heading--conclusion)
+* [Commonly Used References](#heading--references)
 
 ## <a id="heading--developing-ide" name="heading--developing-ide"></a>Choosing IDE
 
@@ -804,7 +805,7 @@ def log = log as Log
 
 Doing so and adding corresponding dependencies to your scripted connector project can enable your IDE to show bindings' class information and provide additional code completion options.
 
-> For example, [in IntelliJ, you can add your dependencies as modules](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html). Even if you don't manage your connector scripts as a Java project, for the `identityconnectors` and `openicf` packages, you could import `java-framework` and `groovy-common` from [OPENICF/connectors](https://stash.forgerock.org/projects/OPENICF/repos/connectors/browse); and thus, allow your IDE to show the additional information about your variables.
+> For example, [in IntelliJ, you can add your dependencies as modules](https://www.jetbrains.com/help/idea/working-with-module-dependencies.html). Even if you don't manage your connector scripts as a Java project, for the `identityconnectors` and `openicf` packages, you could import `java-framework` and `groovy-common` from the [General Access Connectors](https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse?at=refs%2Ftags%2F1.5.20.15) repository; and thus, allow your IDE to show the additional information about your variables.
 
 ## <a id="heading--developing-scripted-connectors-groovy" name="heading--developing-scripted-connectors-groovy"></a>Scripted Groovy Connector (Toolkit)
 
@@ -912,7 +913,7 @@ Before you can register a connection in IDM, your connector server usually needs
 
     The file name of a [script implementing the Schema operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-schema.html).
 
-    In order to use your connector for [synchronization and reconciliation](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html), you need a functional schema script correctly referenced in the connection configuration. Also, a functional schema script returning a schema object is required if you register your connection as described in the [Configure connectors over REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-connector.html#connector-wiz-REST) doc.
+    In order to use your connector for [synchronization](https://backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/chap-sync-operations.html), you need a functional schema script correctly referenced in the connection configuration. Also, a functional schema script returning a schema object is required if you register your connection as described in the [Configure connectors over REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-connector.html#connector-wiz-REST) doc.
 
     Schema script functionality is described in details in the [Schema Script](#heading--developing-scripted-connectors-groovy-schema) chapter, and example implementations can be found in its [Schema Script > Example Schema Script](#heading--developing-scripted-connectors-groovy-schema-example-script) section.
 
@@ -1846,7 +1847,7 @@ To start working on your [search script](https://backstage.forgerock.com/docs/op
 
 [Back to Contents](#heading--contents)
 
-When your search script is deployed, you can update your connection configuration with a reference to the script, as described in the [Registering Connection in IDM](#heading--developing-scripted-connectors-groovy-connection) chapter, and request a search operation via [IDM's REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html) or from a [script in IDM](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html).
+When your search script is deployed, you can update your connection configuration with a reference to the script, as described in the [Registering Connection in IDM](#heading--developing-scripted-connectors-groovy-connection) chapter, and request a search operation via [IDM's REST](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html) or from a [script in IDM](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html).
 
 In either case, you MUST include some search criteria in your request. Optionally, you can add sorting and paging arguments and a list of attributes to receive.
 
@@ -1890,7 +1891,7 @@ To initiate search operation using IDM's REST, you can send a GET request to you
 
 * Read Function
 
-    The simplest call to [openidm.read(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) will only include an object class and a resource ID reference:
+    The simplest call to [openidm.read(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html) will only include an object class and a resource ID reference:
 
     ```javascript
     openidm.read('system/<connection-name>/<object-class>/<ID>');
@@ -1926,7 +1927,7 @@ To initiate search operation using IDM's REST, you can send a GET request to you
 
 * Query Function
 
-    The simplest call to [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) will only include an all-inclusive literal 'true':
+    The simplest call to [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html) will only include an all-inclusive literal 'true':
 
     ```javascript
     openidm.query('system/<connection-name>/<object-class>', {
@@ -2163,7 +2164,7 @@ For example:
 
 Each object class that you expect to be searchable will need to be handled within your search script. Different object classes can be associated with different data sources, have different attributes, or otherwise require different processing. This means, you will likely need to organize your code so that the result set for each object class is treated uniquely, using conditional logic. You can determine which object class data has been requested from the search operation by inspecting the `objectClass` binding and base your conditional logic on its content.
 
-If a search operation request is not supported in your script—for example, if an object class is defined in the connector schema, but is not handled in the script—the request should result in [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/UnsupportedOperationException.html) with an informative message.
+If a search operation request is not supported in your script—for example, if an object class is defined in the connector schema, but is not handled in the script—the request should result in [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/UnsupportedOperationException.html) with an informative message.
 
 For the reasons discussed in the [Debugging Scripts > Try and Catch](#heading--developing-debugging-scripts-try-catch) chapter, you should also handle any errors in your search script and respond with custom error messages.
 
@@ -2270,7 +2271,7 @@ For a single specific resource, you can specify its ID as a [URL path](https://w
 
 * `/openidm/system/<connection-name>/<object-class>/<ID>` (in a CREST [Read](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-read.html) request)
 
-* `openidm.read('system/<connection-name>/<object-class>/<ID>')` (in an [openidm.read(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) function call)
+* `openidm.read('system/<connection-name>/<object-class>/<ID>')` (in an [openidm.read(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html) function call)
 
 For example:
 
@@ -2415,7 +2416,7 @@ In a [query request](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-qu
 
 `/openidm/system/<connection-name>/<object-class>?_queryFilter=<query-definition>`
 
-In an IDM script, the query definition will be included in the [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) params:
+In an IDM script, the query definition will be included in the [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html) params:
 
 ```javascript
 openidm.query('system/<connection-name>/<object-class>', {
@@ -2579,7 +2580,7 @@ To request paging, you need to specify page size.
 
     * `&_pageSize=<positive-integer>` (in a CREST [Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html))
 
-    * `_pageSize: <positive-integer>` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) params)
+    * `_pageSize: <positive-integer>` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html) params)
 
     In a search script context, this parameter becomes available as the `options.pageSize` binding. Presence of a positive value in the `options.pageSize` parameter indicates that paging is requested.
 
@@ -2593,7 +2594,7 @@ To request paging, you need to specify page size.
 
     * `&_sortKeys=<pointer>,<pointer> . . . ` (in a CREST [Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html))
 
-    * `_sortKeys: [' <pointer>', '<pointer>' . . . ]` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) params)
+    * `_sortKeys: [' <pointer>', '<pointer>' . . . ]` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html) params)
 
     By default, the order in which each sort key is to be applied is ascending. You can change it by prefixing a pointer with a `-` (minus) sign in your request.
 
@@ -2713,7 +2714,7 @@ To request paging, you need to specify page size.
 
         * `&_pagedResultsCookie=<paged-results-cookie>` (in a CREST [Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html))
 
-        * `_pagedResultsCookie: <paged-results-cookie>` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) params)
+        * `_pagedResultsCookie: <paged-results-cookie>` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html) params)
 
         The search script will receive this value in the `options.pagedResultsCookie` parameter, and will need to decode it to determine the last ID position in the source data to start the next page from.
 
@@ -2763,7 +2764,7 @@ By default, all handled attributes that are defined in the connector schema will
 
 * `&_fields=pointer[,pointer . . . ]` (in a CREST [Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html))
 
-* `[ 'pointer', . . . ]` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) _fields_, which is the third and last argument of this method)
+* `[ 'pointer', . . . ]` (in [openidm.query(resourceName, params, fields)](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html) _fields_, which is the third and last argument of this method)
 
 Attributes not matching the populated `_fields` value will be automatically excluded from the search operation response with one exception: a response from IDM's REST will always include the `_id` attribute.
 
@@ -3849,8 +3850,6 @@ In particular, the [parse(String script)](https://docs.groovy-lang.org/latest/ht
     "customConfiguration": "key1 { key2 = 'value2'; };"
     ```
 
-> Repository reference: [General Access > connectors-customers-ga > 1.5.20.15 > [ . . . ] > ScriptedConfiguration.java](https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse/groovy-common/src/main/java/org/forgerock/openicf/connectors/groovy/ScriptedConfiguration.java?at=refs%2Ftags%2F1.5.20.15#563-569,576-584).
-
 If you use a closure for setting "customConfiguration" variables, the literal preceding the closure becomes a key in the `configuration.propertyBag` map, and its value will be a map-like [ConfigObject](https://docs.groovy-lang.org/latest/html/gapi/groovy/util/ConfigObject.html) with its keys corresponding to the variables set by the closure code. You can also create such maps of parameters by using variable assignment or dot notation. Saving your parameters in maps may help to better organize your custom configuration and reduce redundancy.
 
 For example:
@@ -4886,7 +4885,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
 [Back to Contents](#heading--contents)
 
-You can invoke a system action from an [IDM script](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-ref.html) by calling `openidm.action(resource, actionName, content, params, fields)` function for _Actions supported on system resources (system/`*`)_.
+You can invoke a system action from an [IDM script](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html) by calling `openidm.action(resource, actionName, content, params, fields)` function for _Actions supported on system resources (system/`*`)_.
 
 ###### <a id="heading--developing-connector-configuration-system-actions-idm-script-syntax" name="heading--developing-connector-configuration-system-actions-idm-script-syntax"></a>Scripted Groovy Connector (Toolkit) > Connection Configuration > "systemActions" > Invoking from an IDM Script > Syntax
 
@@ -5153,7 +5152,37 @@ In addition, the [Salesforce](https://backstage.forgerock.com/docs/openicf/lates
 
 [Back to Contents](#heading--contents)
 
-We went over some basic details that can help to start developing a Groovy Toolkit-based connector for a Java Remote Connector Server when an existing solution cannot be easily adjusted to meet particular requirements.
+Some basic details that can help start developing a Groovy Toolkit-based connector for a Java Remote Connector Server have been provided, to aid use cases when an existing solution cannot be easily adjusted to meet particular requirements.
+
+## <a id="heading--references" name="heading--references"></a>Commonly Used References
+
+[Back to Contents](#heading--contents)
+
+* [Identity Cloud / Sync identities with an external resource](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html)
+
+* [Identity Cloud / Identity and object-related REST APIs / System objects](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html)
+
+* [Identity Cloud / Synchronization (Guide)](backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/)
+
+* [Identity Cloud / Application management](https://backstage.forgerock.com/docs/idcloud/latest/app-management/applications.html)
+
+* [Identity Cloud / Scripting in JavaScript / Functions available for use in identity scripts](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html)
+
+* [Identity Cloud / Object modeling / Access data objects / Define and call data queries](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/queries.html)
+
+* [IDM 7.3.0 / REST API reference / ForgeRock Common REST](https://backstage.forgerock.com/docs/idm/7.3/crest/about-crest.html)
+
+* [IDM 7.3.0 / Samples / Samples provided with IDM](https://backstage.forgerock.com/docs/idm/7.3/samples-guide/samples-provided.html)
+
+* [OpenICF Docs](https://backstage.forgerock.com/docs/openicf/latest)
+
+* [General Access Connectors Repository](https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse?at=refs%2Ftags%2F1.5.20.15)
+
+* [The Apache Groovy programming language](https://groovy-lang.org/)
+
+* [Groovy JDK API Documentation](https://docs.groovy-lang.org/latest/html/groovy-jdk/overview-summary.html)
+
+* [Java API Docs](https://docs.oracle.com/en/java/javase/11/docs/api/index.html)
 
 ***
 
