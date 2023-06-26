@@ -5152,7 +5152,7 @@ In addition, the [Salesforce](https://backstage.forgerock.com/docs/openicf/lates
 
 [Back to Contents](#heading--contents)
 
-Some basic details that can help start developing a Groovy Toolkit-based connector for a Java Remote Connector Server have been provided, to aid use cases when an existing solution cannot be easily adjusted to meet particular requirements.
+This writing have covered some basics of developing a Groovy Toolkit-based connector for a Java Remote Connector Server, which can help use cases when an existing connector solution cannot be easily adjusted to meet particular requirements.
 
 ## <a id="heading--references" name="heading--references"></a>Commonly Used References
 
