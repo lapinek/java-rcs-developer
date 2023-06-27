@@ -19,7 +19,11 @@ Additional information could also be found on the [ForgeRock Backstage](https://
 * [Debugging Scripts](#heading--developing-debugging-scripts)
     * [Try and Catch](#heading--developing-debugging-scripts-try-catch)
     * [Custom Logs](#heading--developing-debugging-scripts-custom-logs)
-    * [Attaching Debugger to Kubernetes Deployment](#heading--developing-debugging-scripts-debugger)
+    * [Attaching Debugger to Kubernetes Deployment](#heading--developing-debugging-scripts-debugger-k8s)
+        * [Enable Debugging](#heading--developing-debugging-scripts-debugger-k8s-jdwp)
+        * [Enable Debugging Port](#heading--developing-debugging-scripts-debugger-k8s-port)
+        * [Configure Debugger and Start Debugging](#heading--developing-debugging-scripts-debugger-k8s-debugger)
+    * [Attaching Debugger to RCS within Docker Container](#heading--developing-debugging-scripts-debugger-docker)
 * [Scripting Context](#heading--developing-connector-context)
     * [Bindings](#heading--developing-connector-context-bindings)
     * [Global Variables](#heading--developing-connector-context-globals)
@@ -424,17 +428,21 @@ println binding.variables.query().inspect()
 [rcs] ['not':false, 'operation':'GREATERTHAN', 'left':'__NAME__', 'right':'m']
 ```
 
-### <a id="heading--developing-debugging-scripts-debugger" name="heading--developing-debugging-scripts-debugger"></a>Debugging Scripts > Attaching Debugger to Kubernetes Deployment
+### <a id="heading--developing-debugging-scripts-debugger-k8s" name="heading--developing-debugging-scripts-debugger-k8s"></a>Debugging Scripts > Attaching Debugger to Kubernetes Deployment
 
 [Back to Contents](#heading--contents)
 
 Attaching a debugger to your RCS process will allow to pause a connector execution at select break points in your code and inspect the current state of your connector scripting context. Doing so can help to locate and eliminate programming errors.
 
-If your RCS is deployed in a [Docker](https://www.docker.com/) container within a [Kubernetes](https://kubernetes.io/) cluster, it will run in a remote Java Virtual Machine (JVM). In order to attach a debugger to this process from your local development setup, you will need to perform the following steps:
+An RCS can be deployed within a [Docker](https://www.docker.com/) container; in this case, it will run in a remote Java Virtual Machine (JVM). In order to attach a debugger to this process from your local development setup, you will need to perform the following steps:
 
-1. Start your RCS JVM with the [Java Debug Wire Protocol (JDWP)](https://docs.oracle.com/en/java/javase/11/docs/specs/jpda/conninv.html#oracle-vm-invocation-options) options.
+1. <a id="heading--developing-debugging-scripts-debugger-k8s-jdwp" name="heading--developing-debugging-scripts-debugger-k8s-jdwp"></a>Enable Debugging
 
-    You can specify the JDWP options in a few alternative ways:
+    [Back to Contents](#heading--contents)
+
+    You can enable debugging by invoking your RCS JVM with the [Java Debug Wire Protocol (JDWP)](https://docs.oracle.com/en/java/javase/11/docs/specs/jpda/conninv.html#oracle-vm-invocation-options) options.
+
+    For a [Kubernetes](https://kubernetes.io/) deployment, you can specify the JDWP options in a few alternative ways:
 
     * Engage the [ForgeRock Open Identity Connector Framework (ICF)](https://backstage.forgerock.com/docs/openicf/latest/index.html) defaults.
 
@@ -465,7 +473,7 @@ If your RCS is deployed in a [Docker](https://www.docker.com/) container within 
 
         > JDWP is a part of Java Platform Debugger Architecture; hence, the JPDA abbreviation is used in the ICF code.
 
-        In a Kubernetes manifest for your RCS, the `jpda` argument can be added to the command that calls the Docker ENTRYPOINT script.
+        In a Kubernetes manifest for your RCS, the `jpda` argument can be added to the command that calls the `/opt/openicf/bin/docker-entrypoint.sh` script.
 
         For example:
 
@@ -543,9 +551,13 @@ If your RCS is deployed in a [Docker](https://www.docker.com/) container within 
     >
     > If you omit the host identifier in the Java Development Kit (JDK) 9 and above, the connection will be limited to `localhost`. In the older versions of JDK, if no host is specified, a connection would be allowed from any IP. To achieve the same behavior in JDK 9+, you can use a wildcard as the host value; for example, `address=*:5005`. It is considered the best practice, however, to limit connections to a specific IP.
     >
-    > In the case of attaching a debugger to RCS, leaving the host information out, and thus limiting the debugger connection to localhost, is the easiest option.
+    > In the case of attaching a debugger to RCS deployed within a Kubernetes cluster, leaving the host information out, and thus limiting the debugger connection to localhost, is the easiest option and the one taken in the default JDWP options defined in the ICF.
 
-2. Allow your local debugger to communicate with the RCS process via the remote debugging port specified in the JDWP options.
+2. <a id="heading--developing-debugging-scripts-debugger-k8s-port" name="heading--developing-debugging-scripts-debugger-k8s-port"></a>Enable Debugging Port
+
+    [Back to Contents](#heading--contents)
+
+    You will need to allow your local debugger to communicate with the RCS process via the remote debugging port specified in the JDWP options.
 
     Your RCS deployment and its debugging port are unlikely to be exposed externally. This means, you will need to let your debugger access the remote process by [forwarding connections made to a local port on your machine to a remote port on the RCS pods in your Kubernetes cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/#forward-a-local-port-to-a-port-on-the-pod).
 
@@ -560,7 +572,9 @@ If your RCS is deployed in a [Docker](https://www.docker.com/) container within 
     Forwarding from [::1]:5005 -> 5005
     ```
 
-3. Configure your debugger for remote debugging and start a debugging session.
+3. <a id="heading--developing-debugging-scripts-debugger-k8s-debugger" name="heading--developing-debugging-scripts-debugger-k8s-debugger"></a>Configure Debugger and Start Debugging
+
+    [Back to Contents](#heading--contents)
 
     IntelliJ is a popular IDE that has rich and refined support for Java and Groovy; and thus, it is probably going to be your best option for developing Groovy scripts for RCS. Below, find an example of how you can configure IntelliJ for remote debugging and attach its debugger to your RCS process:
 
@@ -583,10 +597,15 @@ If your RCS is deployed in a [Docker](https://www.docker.com/) container within 
         <img alt="Two modules registered in a project and appearing under Project Files: groovy and postgres. The latter is expanded to show existing source files and their location." data-src-local="README_files/intellij.project-files.modules.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/6/609333ea0e0755b1e8b47f6677f1f553ac99a5a2.png" src="upload://dMlduMMqSx9azlUjyFBbA8PNBwC.png" width="512">
 
     1. Select `Run` > `Edit Configurations...`
+
     1. Select `Add New Configuration` (`+`), then select `Remote JVM Debug` from the list of predefined configuration templates.
+
     1. In the `Configuration` tab, provide values (or verify the defaults) for the following settings:
+
         1. `Name`: _your-rcs-connector-debugging-configuration-name_
+
         1. `Debugger mode`: Attach to remote JVM
+
         1. `Host`: localhost
 
             The host to which the debugger will connect. Choose localhost because we, actually, attempt to debug locally (that is, the debugger runs locally and connects to a local port, and then it is forwarded to a remote port in the Kubernetes cluster); you could also use `127.0.0.1` or `::1` as the Host value.
@@ -670,6 +689,28 @@ If your RCS is deployed in a [Docker](https://www.docker.com/) container within 
     For additional details, consult the IntelliJ docs on [setting debugging environment](https://www.jetbrains.com/help/idea/creating-and-editing-run-debug-configurations.html) and [debugging](https://www.jetbrains.com/help/idea/debugging-code.html#general-procedure).
 
 This should help understand the process of attaching a debugger to your RCS instance running in a Kubernetes cluster. Change it according to your specific requirements.
+
+### <a id="heading--developing-debugging-scripts-debugger-docker" name="heading--developing-debugging-scripts-debugger-docker"></a>Debugging Scripts > Attaching Debugger to RCS within Docker Container
+
+[Back to Contents](#heading--contents)
+
+If you have deployed RCS in a stand-alone Docker container, you can publish the debugger port in the [docker run](https://docs.docker.com/engine/reference/commandline/run) command using the [--publish, -p](https://docs.docker.com/engine/reference/commandline/run/#publish) flag.
+
+Because localhost reference in a stand-alone container will depend on the host platform, you might not be able to use the default JDWP options defined by the ICF. Also, there is no standard way to update the environment variables in a running Docker container. Thus, including the JDWP options in the `OPENICF_OPTS` environment variable at the time an RCS container is created (with the [docker run](https://docs.docker.com/engine/reference/commandline/run) command) is probably the most practical way of enabling debugging.
+
+For example:
+
+`.env file`
+
+```sh
+OPENICF_OPTS=-Dconnectorserver.url=wss://openam-dx-kl04.forgeblocks.com/openicf/0 -Dconnectorserver.tokenEndpoint=https://openam-dx-kl04.forgeblocks.com/am/oauth2/realms/root/realms/alpha/access_token -Dconnectorserver.connectorServerName=rcs-docker-1 -Dconnectorserver.clientId=RCSClient -Dconnectorserver.clientSecret=YA...H? -agentlib:jdwp=transport=dt_socket,address=*:5005,server=y,suspend=n
+```
+
+```sh
+$ docker run --rm --env-file .env -p 127.0.0.1:5005:5005 --entrypoint /opt/openicf/bin/docker-entrypoint.sh rcs
+```
+
+From this point, you can proceed to the step [3. Configure Debugger and Start Debugging](#heading--developing-debugging-scripts-debugger-k8s-debugger) described in the Kubernetes Deployment chapter.
 
 ##  <a id="heading--developing-connector-context" name="heading--developing-connector-context"></a>Scripting Context
 
