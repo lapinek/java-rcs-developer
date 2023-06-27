@@ -694,7 +694,7 @@ This should help understand the process of attaching a debugger to your RCS inst
 
 [Back to Contents](#heading--contents)
 
-If you have deployed RCS in a stand-alone Docker container, you can publish the debugger port in the [docker run](https://docs.docker.com/engine/reference/commandline/run) command using the [--publish, -p](https://docs.docker.com/engine/reference/commandline/run/#publish) flag.
+If you run RCS in a stand-alone Docker container, as described in [Deploying Java Remote Connector Server in a Docker Container](https://community.forgerock.com/t/deploying-java-remote-connector-server-in-a-docker-container), you can publish the debugger port in the [docker run](https://docs.docker.com/engine/reference/commandline/run) command using the [--publish, -p](https://docs.docker.com/engine/reference/commandline/run/#publish) flag.
 
 Because localhost reference in a stand-alone container will depend on the host platform, you might not be able to use the default JDWP options defined by the ICF. Also, there is no standard way to update the environment variables in a running Docker container. Thus, including the JDWP options in the `OPENICF_OPTS` environment variable at the time an RCS container is created (with the [docker run](https://docs.docker.com/engine/reference/commandline/run) command) is probably the most practical way of enabling debugging.
 
@@ -822,7 +822,8 @@ binding.variables.each { key, value ->
 [rcs] log: org.identityconnectors.common.logging.Log
 ```
 
-> [Registering Connection in IDM](#heading--developing-scripted-connectors-groovy-connection) and [Schema Script](#heading--developing-scripted-connectors-groovy-schema) chapters provide details on enabling and requesting schema operation, which invokes the schema script.
+> [Registering Connection in IDM](https://community.forgerock.com/t/the-basics-of-developing-scripted-connectors-for-java-remote-connector-server-part-2/3160#heading--developing-scripted-connectors-groovy-connection) and [Schema Script](https://community.forgerock.com/t/the-basics-of-developing-scripted-connectors-for-java-remote-connector-server-part-2/3160#heading--developing-scripted-connectors-groovy-schema) (Part 2) chapters provide details on enabling and requesting schema operation, which invokes the schema script.
+
 
 ### <a id="heading--developing-connector-context-globals" name="heading--developing-connector-context-globals"></a>Global Variables
 
