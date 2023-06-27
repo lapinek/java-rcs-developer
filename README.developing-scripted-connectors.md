@@ -1,4 +1,4 @@
-# The Basics of Developing Scripted Connectors for Java Remote Connector Server
+# The Basics of Developing Scripted Connectors for Java Remote Connector Server (Part 1)
 
 In the [ForgeRock Identity Cloud](https://backstage.forgerock.com/docs/idcloud/latest/home.html) (Identity Cloud) managed environment, [syncing identities](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html) via a remote server provides necessary flexibility in integrating the [ForgeRock Identity Platform](https://backstage.forgerock.com/docs/platform) (Platform) with external systems.
 
@@ -65,46 +65,48 @@ Additional information could also be found on the [ForgeRock Backstage](https://
                 * ["run on resource"](#heading--developing-connector-configuration-system-actions-script-examples-on-resource)
         * ["run on resource" vs "run on connector"](#heading--developing-connector-configuration-system-actions-execute-modes)
         * [Support in Connectors](#heading--developing-connector-configuration-system-actions-support)
-* [Scripted Groovy Connector (Toolkit)](#heading--developing-scripted-connectors-groovy)
-    * [Registering Connection in IDM](#heading--developing-scripted-connectors-groovy-connection)
-        * [Deployment Requirements](#heading--developing-scripted-connectors-groovy-connection-requirements)
-        * [Platform UI](#heading--developing-scripted-connectors-groovy-connection-platform-ui)
-        * [IDM's REST](#heading--developing-scripted-connectors-groovy-connection-rest)
-            * [Create Configuration](#heading--developing-scripted-connectors-groovy-connection-rest-system)
-            * [Use a Provisioner File](#heading--developing-scripted-connectors-groovy-connection-rest-provisioner)
-            * [Example](#heading--developing-scripted-connectors-groovy-connection-rest-example)
-    * [Schema Script](#heading--developing-scripted-connectors-groovy-schema)
-        * [Object Classes](#heading--developing-scripted-connectors-groovy-schema-object-types)
-            * [objectClass(Closure closure)](#heading--developing-scripted-connectors-groovy-schema-object-types-object-class)
-                * [type(String type)](#heading--developing-scripted-connectors-groovy-schema-object-types-object-class-type)
-                * [attribute(String name[, Class type[, Set flags]])](#heading--developing-scripted-connectors-groovy-schema-object-types-object-class-attribute)
-                * [attribute(AttributeInfo attributeInfo)](#heading--developing-scripted-connectors-groovy-schema-object-types-object-class-attribute-info)
-                * [attributes(Closure closure)](#heading--developing-scripted-connectors-groovy-schema-object-types-object-class-attributes)
-            * [defineObjectClass(ObjectClassInfo objectClassInfo[, . . . ])](#heading--developing-scripted-connectors-groovy-schema-object-types-define-object-class)
-        * [Example Data](#heading--developing-scripted-connectors-groovy-schema-example-data)
-            * [Users](#heading--developing-scripted-connectors-groovy-schema-example-data-users)
-            * [Groups](#heading--developing-scripted-connectors-groovy-schema-example-data-groups)
-        * [Example Schema Script](#heading--developing-scripted-connectors-groovy-schema-example-script)
-            * [Original Data Structure](#heading--developing-scripted-connectors-groovy-schema-example-script-original)
-            * [Flat Representation of Data](#heading--developing-scripted-connectors-groovy-schema-example-script-flat)
-    * [Search Script](#heading--developing-scripted-connectors-groovy-search)
-        * [Requesting Search Operation](#heading--developing-scripted-connectors-groovy-search-requesting-data)
-            * [IDM's REST](#heading--developing-scripted-connectors-groovy-search-requesting-data-rest)
-            * [IDM Script](#heading--developing-scripted-connectors-groovy-search-requesting-data-script)
-        * [Responding with Data](#heading--developing-scripted-connectors-groovy-search-responding-with-data)
-        * [Filtering Results](#heading--developing-scripted-connectors-groovy-search-filtering)
-            * [Read by Resource ID](#heading--developing-scripted-connectors-groovy-search-filtering-id)
-            * [Query Definition](#heading--developing-scripted-connectors-groovy-search-filtering-query-expression)
-        * [Paging and Sorting](#heading--developing-scripted-connectors-groovy-search-paging)
-            * [Page Size](#heading--developing-scripted-connectors-groovy-search-paging-size)
-            * [Sorting](#heading--developing-scripted-connectors-groovy-search-paging-sorting)
-            * [Tracking Position in Paged Results](#heading--developing-scripted-connectors-groovy-search-paging-tracking)
-        * [Attributes to Get](#heading--developing-scripted-connectors-groovy-search-attributes)
-        * [Example Search Script](#heading--developing-scripted-connectors-groovy-search-example)
-            * [Flat Representation of Data](#heading--developing-scripted-connectors-groovy-search-example-flat)
-    * [Test Script](#heading--developing-scripted-connectors-groovy-test)
-* [Conclusion](#heading--conclusion)
 * [Commonly Used References](#heading--references)
+* [Part 2](https://community.forgerock.com/t/the-basics-of-developing-scripted-connectors-for-java-remote-connector-server-part-2/3160)
+    * Scripted Groovy Connector (Toolkit)
+        * Registering Connection in IDM
+            * Deployment Requirements
+            * Platform UI
+            * IDM's REST
+                * Create Configuration
+                * Use a Provisioner File
+                * Example
+        * Schema Script
+            * Object Classes
+                * objectClass(Closure closure)
+                    * type(String type)
+                    * attribute(String name[, Class type[, Set flags]])
+                    * attribute(AttributeInfo attributeInfo)
+                    * attributes(Closure closure)
+                * defineObjectClass(ObjectClassInfo objectClassInfo[, . . . ])
+            * Example Data
+                * Users
+                * Groups
+            * Example Schema Script
+                * Original Data Structure
+                * Flat Representation of Data
+        * Search Script
+            * Requesting Search Operation
+                * IDM's REST
+                * IDM Script
+            * Responding with Data
+            * Filtering Results
+                * Read by Resource ID
+                * Query Definition
+            * Paging and Sorting
+                * Page Size
+                * Sorting
+                * Tracking Position in Paged Results
+            * Attributes to Get
+            * Example Search Script
+                * Flat Representation of Data
+        * Test Script
+    * Conclusion
+    * Commonly Used References
 
 ## <a id="heading--developing-ide" name="heading--developing-ide"></a>Choosing IDE
 
@@ -696,7 +698,7 @@ This should help understand the process of attaching a debugger to your RCS inst
 
 If you run RCS in a stand-alone Docker container, as described in [Deploying Java Remote Connector Server in a Docker Container](https://community.forgerock.com/t/deploying-java-remote-connector-server-in-a-docker-container), you can publish the debugger port in the [docker run](https://docs.docker.com/engine/reference/commandline/run) command using the [--publish, -p](https://docs.docker.com/engine/reference/commandline/run/#publish) flag.
 
-Because localhost reference in a stand-alone container will depend on the host platform, you might not be able to use the default JDWP options defined by the ICF. Also, there is no standard way to update the environment variables in a running Docker container. Thus, including the JDWP options in the `OPENICF_OPTS` environment variable at the time an RCS container is created (with the [docker run](https://docs.docker.com/engine/reference/commandline/run) command) is probably the most practical way of enabling debugging.
+Because localhost reference in a stand-alone container will depend on the host platform, you might not be able to use the default JDWP options defined by the ICF. Also, there is no standard way to update the environment variables in a running Docker container. Thus, including the JDWP options in the `OPENICF_OPTS` environment variable at the time an RCS container is created (with the [docker run](https://docs.docker.com/engine/reference/commandline/run) command) is probably the most practical way of enabling debugging, because it will allow to include the host information in the address option. For example, on a macOS, you can reference the host machine address with `address=0.0.0.0:5005` inside a Docker container. Alternatively, you can allow a debugger connection from any host in the JDWP options with `address=*:5005`. To prevent external access, you can bind the debugging port on the host machine to the localhost IP in the `--publish, -p` flag.
 
 For example:
 
@@ -2517,6 +2519,152 @@ At the time of writing, the following (Java) connectors have implemented both:
 In addition, the [Salesforce](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/salesforce.html) connector has only "script on connector operation" implemented.
 
 > Although unrelated to Java RCS, [Scripted connectors with PowerShell](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/powershell.html) also support script on connector operation.
+
+## <a id="heading--references" name="heading--references"></a>Commonly Used References
+
+[Back to Contents](#heading--contents)
+
+* [Identity Cloud / Sync identities with an external resource](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html)
+
+* [Identity Cloud / Identity and object-related REST APIs / System objects](https://backstage.forgerock.com/docs/idcloud-idm/latest/rest-api-reference/endpoints/rest-system-objects.html)
+
+* [Identity Cloud / Synchronization (Guide)](backstage.forgerock.com/docs/idcloud-idm/latest/synchronization-guide/)
+
+* [Identity Cloud / Application management](https://backstage.forgerock.com/docs/idcloud/latest/app-management/applications.html)
+
+* [Identity Cloud / Scripting in JavaScript / Functions available for use in identity scripts](https://backstage.forgerock.com/docs/idcloud-idm/latest/scripting-guide/scripting-func-engine.html)
+
+* [Identity Cloud / Object modeling / Access data objects / Define and call data queries](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/queries.html)
+
+* [IDM 7.3.0 / REST API reference / ForgeRock Common REST](https://backstage.forgerock.com/docs/idm/7.3/crest/about-crest.html)
+
+* [IDM 7.3.0 / Samples / Samples provided with IDM](https://backstage.forgerock.com/docs/idm/7.3/samples-guide/samples-provided.html)
+
+* [OpenICF Docs](https://backstage.forgerock.com/docs/openicf/latest)
+
+* [General Access Connectors Repository](https://stash.forgerock.org/projects/GA/repos/connectors-customers-ga/browse?at=refs%2Ftags%2F1.5.20.15)
+
+* [The Apache Groovy programming language](https://groovy-lang.org/)
+
+* [Groovy JDK API Documentation](https://docs.groovy-lang.org/latest/html/groovy-jdk/overview-summary.html)
+
+* [Java API Docs](https://docs.oracle.com/en/java/javase/11/docs/api/index.html)
+
+Continues in [The Basics of Developing Scripted Connectors for Java Remote Connector Server (Part 2)](https://community.forgerock.com/t/the-basics-of-developing-scripted-connectors-for-java-remote-connector-server-part-2/3160)
+
+***
+
+#### QUICK LINKS
+
+* [Backstage Customer Portal](https://backstage.forgerock.com/)
+* [Marketplace](https://backstage.forgerock.com/marketplace/)
+* [Knowledge Base](https://backstage.forgerock.com/knowledge/)
+* [Technical Blog](https://community.forgerock.com/tag/blog)
+* [Training & Certification](https://www.forgerock.com/university)
+
+# The Basics of Developing Scripted Connectors for Java Remote Connector Server (Part 2)
+
+Starts in [The Basics of Developing Scripted Connectors for Java Remote Connector Server (Part 1)](https://community.forgerock.com/t/the-basics-of-developing-scripted-connectors-for-java-remote-connector-server-part-1/3159).
+
+> Use the links under the Contents section to quickly navigate to an area of interest. If you feel lost in a long chapter, navigate to the closest [Back to contents](#heading--contents) link and try again.
+>
+> The quoted paragraphs, such as this one, indicate that the content they provide is supplementary and optional.
+
+## <a id="heading--contents" name="heading--contents"></a>Contents
+
+* [Scripted Groovy Connector (Toolkit)](#heading--developing-scripted-connectors-groovy)
+    * [Registering Connection in IDM](#heading--developing-scripted-connectors-groovy-connection)
+        * [Deployment Requirements](#heading--developing-scripted-connectors-groovy-connection-requirements)
+        * [Platform UI](#heading--developing-scripted-connectors-groovy-connection-platform-ui)
+        * [IDM's REST](#heading--developing-scripted-connectors-groovy-connection-rest)
+            * [Create Configuration](#heading--developing-scripted-connectors-groovy-connection-rest-system)
+            * [Use a Provisioner File](#heading--developing-scripted-connectors-groovy-connection-rest-provisioner)
+            * [Example](#heading--developing-scripted-connectors-groovy-connection-rest-example)
+    * [Schema Script](#heading--developing-scripted-connectors-groovy-schema)
+        * [Object Classes](#heading--developing-scripted-connectors-groovy-schema-object-types)
+            * [objectClass(Closure closure)](#heading--developing-scripted-connectors-groovy-schema-object-types-object-class)
+                * [type(String type)](#heading--developing-scripted-connectors-groovy-schema-object-types-object-class-type)
+                * [attribute(String name[, Class type[, Set flags]])](#heading--developing-scripted-connectors-groovy-schema-object-types-object-class-attribute)
+                * [attribute(AttributeInfo attributeInfo)](#heading--developing-scripted-connectors-groovy-schema-object-types-object-class-attribute-info)
+                * [attributes(Closure closure)](#heading--developing-scripted-connectors-groovy-schema-object-types-object-class-attributes)
+            * [defineObjectClass(ObjectClassInfo objectClassInfo[, . . . ])](#heading--developing-scripted-connectors-groovy-schema-object-types-define-object-class)
+        * [Example Data](#heading--developing-scripted-connectors-groovy-schema-example-data)
+            * [Users](#heading--developing-scripted-connectors-groovy-schema-example-data-users)
+            * [Groups](#heading--developing-scripted-connectors-groovy-schema-example-data-groups)
+        * [Example Schema Script](#heading--developing-scripted-connectors-groovy-schema-example-script)
+            * [Original Data Structure](#heading--developing-scripted-connectors-groovy-schema-example-script-original)
+            * [Flat Representation of Data](#heading--developing-scripted-connectors-groovy-schema-example-script-flat)
+    * [Search Script](#heading--developing-scripted-connectors-groovy-search)
+        * [Requesting Search Operation](#heading--developing-scripted-connectors-groovy-search-requesting-data)
+            * [IDM's REST](#heading--developing-scripted-connectors-groovy-search-requesting-data-rest)
+            * [IDM Script](#heading--developing-scripted-connectors-groovy-search-requesting-data-script)
+        * [Responding with Data](#heading--developing-scripted-connectors-groovy-search-responding-with-data)
+        * [Filtering Results](#heading--developing-scripted-connectors-groovy-search-filtering)
+            * [Read by Resource ID](#heading--developing-scripted-connectors-groovy-search-filtering-id)
+            * [Query Definition](#heading--developing-scripted-connectors-groovy-search-filtering-query-expression)
+        * [Paging and Sorting](#heading--developing-scripted-connectors-groovy-search-paging)
+            * [Page Size](#heading--developing-scripted-connectors-groovy-search-paging-size)
+            * [Sorting](#heading--developing-scripted-connectors-groovy-search-paging-sorting)
+            * [Tracking Position in Paged Results](#heading--developing-scripted-connectors-groovy-search-paging-tracking)
+        * [Attributes to Get](#heading--developing-scripted-connectors-groovy-search-attributes)
+        * [Example Search Script](#heading--developing-scripted-connectors-groovy-search-example)
+            * [Flat Representation of Data](#heading--developing-scripted-connectors-groovy-search-example-flat)
+    * [Test Script](#heading--developing-scripted-connectors-groovy-test)
+* [Conclusion](#heading--conclusion)
+* [Commonly Used References](#heading--references)
+* [Part 1](https://community.forgerock.com/t/the-basics-of-developing-scripted-connectors-for-java-remote-connector-server-part-1/3159)
+    * Choosing IDE
+    * Interacting with RCS via IDM's REST
+    * Debugging Scripts
+        * Try and Catch
+        * Custom Logs
+        * Attaching Debugger to Kubernetes Deployment
+            * Enable Debugging
+            * Enable Debugging Port
+            * Configure Debugger and Start Debugging
+        * Attaching Debugger to RCS within Docker Container
+    * Scripting Context
+        * Bindings
+        * Global Variables
+    * Scripted Groovy Connector Bindings
+        * configuration
+            * configuration.propertyBag
+                * In Connection Configuration
+                * In Customizer Script
+                    * For Groovy Connector
+                    * For Scripted SQL Connector
+                    * For Scripted REST Connector
+                * In Scripts at Runtime
+    * Scripted Groovy Connection Configuration
+        * "configurationProperties"
+            * "customConfiguration" and "customSensitiveConfiguration"
+        * "systemActions"
+            * Defining System Action
+                * "scriptId"
+                * "actions"
+                    * "systemType"
+                    * "actionType"
+                    * "actionSource" _or_ "actionFile"
+            * Invoking via IDM's REST
+                * Parts of the Request
+                    * /openidm/system/\<connection-name\> (connection endpoint)
+                    * ?_action=script (request to execute script)
+                    * &scriptId=\<script_id\> (system action to execute and return from)
+                    * &arg1=value1&arg2=value2 . . . (script arguments)
+                    * request body (script arguments)
+                    * &scriptExecuteMode=resource ("run on resource")
+                        * Executed Script
+                        * Context of Executed Script
+                        * Evaluating `scriptText`
+                        * Other Applications of `scriptText`
+            * Invoking from an IDM Script
+                * Syntax
+                * Examples
+                    * "run on connector"
+                    * "run on resource"
+            * "run on resource" vs "run on connector"
+            * Support in Connectors
+    * Commonly Used References
 
 ## <a id="heading--developing-scripted-connectors-groovy" name="heading--developing-scripted-connectors-groovy"></a>Scripted Groovy Connector (Toolkit)
 
