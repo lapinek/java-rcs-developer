@@ -100,7 +100,6 @@ Starts in [The Basics of Developing Scripted Connectors for Java Remote Connecto
                     * "run on resource"
             * "run on resource" vs "run on connector"
             * Support in Connectors
-    * Commonly Used References
 
 ## <a id="heading--developing-scripted-connectors-groovy" name="heading--developing-scripted-connectors-groovy"></a>Scripted Groovy Connector (Toolkit)
 
@@ -1407,7 +1406,7 @@ import groovy.json.JsonSlurper
 
 def jsonSlurper = new JsonSlurper()
 
-def json = new File('/usr/local/src/users.json')
+def json = new File('/var/lib/rcs/users.json')
 def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
 
 resources.each { resource ->
@@ -1475,7 +1474,7 @@ try {
 
     switch (objectClass.objectClassValue) {
         case 'users':
-            def json = new File('/usr/local/src/users.json')
+            def json = new File('/var/lib/rcs/users.json')
             def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
 
             resources.each { resource ->
@@ -1494,7 +1493,7 @@ try {
 
             break
         case 'groups':
-            def json = new File('/usr/local/src/groups.json')
+            def json = new File('/var/lib/rcs/groups.json')
             def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
 
             resources.each { resource ->
@@ -1637,7 +1636,7 @@ In order for it to match the specified ID, your script needs to implement filter
 
     [ . . . ]
 
-                def json = new File('/usr/local/src/users.json')
+                def json = new File('/var/lib/rcs/users.json')
                 def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
 
                 def uuid = FrameworkUtil.getUidIfGetOperation(filter)
@@ -1730,9 +1729,9 @@ In the simplest scenario, with `_queryFilter=true` (or `_queryFilter: 'true'`), 
 To build a functional query definition, you need to follow conventions described in [Define and call data queries](https://backstage.forgerock.com/docs/idcloud-idm/latest/objects-guide/queries.html) and CREST
 [Query](https://backstage.forgerock.com/docs/idm/7.3/crest/crest-query.html) docs.
 
-> Both documents describe generic IDM search operations; not everything described there can be used within ICF search scripts.
+> Both documents describe generic IDM search operations; not everything described there can be used within RCS search scripts.
 >
-> For example, you might come across references to `_queryExpression` argument, which behaves similarly to `queryFilter` on a connector server, but `_queryExpression` is not officially supported in ICF context.
+> For example, you might come across references to `_queryExpression` argument, which might behave similarly to `queryFilter` on RCS, but `_queryExpression` is not officially supported in RCS context.
 
 Correctly built and accepted by IDM's APIs query definition will be used to populate the `filter` and the `query` bindings with the passed in search criteria:
 
@@ -2636,7 +2635,7 @@ try {
             /**
              * Use sample data in JSON format.
              */
-            def json = new File('/usr/local/src/users.json')
+            def json = new File('/var/lib/rcs/users.json')
             def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
 
             /**
@@ -2665,7 +2664,7 @@ try {
 
             break
         case 'groups':
-            def json = new File('/usr/local/src/groups.json')
+            def json = new File('/var/lib/rcs/groups.json')
             def resources = json.exists() ? (jsonSlurper.parse(json)).Resources : []
 
             /**
@@ -2746,7 +2745,7 @@ For example:
  *                  @see {@link https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html}
  */
 
-def usersJsonFile = new File('/usr/local/src/users.json')
+def usersJsonFile = new File('/var/lib/rcs/users.json')
 
 if (!usersJsonFile.exists()) {
     throw new MissingResourceException('Resources not found.', operation.name(), 'users.json')

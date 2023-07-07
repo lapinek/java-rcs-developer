@@ -2,7 +2,7 @@
 
 Continues in [The Basics of Developing Scripted Connectors for Java Remote Connector Server (Part 2)](https://community.forgerock.com/t/the-basics-of-developing-scripted-connectors-for-java-remote-connector-server-part-2/3160).
 
-In the [ForgeRock Identity Cloud](https://backstage.forgerock.com/docs/idcloud/latest/home.html) (Identity Cloud) managed environment, [syncing identities](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html) via a remote server provides necessary flexibility in integrating the [ForgeRock Identity Platform](https://backstage.forgerock.com/docs/platform) (Platform) with external systems.
+In the [ForgeRock Identity Cloud](https://backstage.forgerock.com/docs/idcloud/latest/home.html) (Identity Cloud) managed environment, [syncing identities](https://backstage.forgerock.com/docs/idcloud/latest/identities/sync-identities.html) via a remote connector server provides necessary flexibility in integrating the [ForgeRock Identity Platform](https://backstage.forgerock.com/docs/platform) (Platform) with external systems.
 
 Scripted implementations present a relatively easy way to extend this flexibility further and almost indefinitely, including the option to develop a new connector when the [available solutions](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/preface.html) do not meet one's requirements. Thus, a scripted connector can address edge cases, aid with proofing a concept, serve as a demo, and potentially outline future development plans for a standard feature.
 
@@ -18,14 +18,17 @@ Additional information could also be found on the [ForgeRock Backstage](https://
 
 * [Choosing IDE](#heading--developing-ide)
 * [Interacting with RCS via IDM's REST](#heading--developing-idm-rest)
-* [Debugging Scripts](#heading--developing-debugging-scripts)
-    * [Try and Catch](#heading--developing-debugging-scripts-try-catch)
-    * [Custom Logs](#heading--developing-debugging-scripts-custom-logs)
-    * [Attaching Debugger to Kubernetes Deployment](#heading--developing-debugging-scripts-debugger-k8s)
-        * [Enable Debugging](#heading--developing-debugging-scripts-debugger-k8s-jdwp)
-        * [Enable Debugging Port](#heading--developing-debugging-scripts-debugger-k8s-port)
-        * [Configure Debugger and Start Debugging](#heading--developing-debugging-scripts-debugger-k8s-debugger)
-    * [Attaching Debugger to RCS within Docker Container](#heading--developing-debugging-scripts-debugger-docker)
+* [Error Handling](#heading--developing-error-handling)
+* [Custom Logging](#heading--developing-custom-logs)
+    * [Methods of the `Log` class](#heading--developing-custom-logs-log)
+    * [Controlling Debug Output](#heading--developing-custom-logs-logback)
+    * [Temporary Logs with `println`](#heading--developing-custom-logs-println)
+* [Attaching Debugger](#heading--developing-debugger)
+    * [Enabling Remote Debugging in Kubernetes](#heading--developing-debugger-k8s)
+        * [Invoking RCS JVM for Debugging](#heading--developing-debugger-k8s-jdwp)
+        * [Publishing Debugging Port](#heading--developing-debugger-k8s-port)
+    * [Enabling Remote Debugging in Docker](#heading--developing-debugger-docker)
+    * [Configuring and Starting Debugger](#heading--developing-debugger-configuration)
 * [Scripting Context](#heading--developing-connector-context)
     * [Bindings](#heading--developing-connector-context-bindings)
     * [Global Variables](#heading--developing-connector-context-globals)
@@ -108,7 +111,6 @@ Additional information could also be found on the [ForgeRock Backstage](https://
                 * Flat Representation of Data
         * Test Script
     * Conclusion
-    * Commonly Used References
 
 ## <a id="heading--developing-ide" name="heading--developing-ide"></a>Choosing IDE
 
@@ -212,17 +214,72 @@ curl 'https://openam-dx-kl03.forgeblocks.com/openidm/system?_action=availableCon
 -H 'Content-Length: 0'
 ```
 
-## <a id="heading--developing-debugging-scripts" name="heading--developing-debugging-scripts"></a>Debugging Scripts
+## <a id="heading--developing-error-handling" name="heading--developing-error-handling"></a> Error Handling
 
 [Back to Contents](#heading--contents)
 
-### <a id="heading--developing-debugging-scripts-try-catch" name="heading--developing-debugging-scripts-try-catch"></a>Debugging Scripts > Try and Catch
+The connector will catch an unhandled exception in your scripts and try to provide a helpful message in the response sent to IDM.
 
-[Back to Contents](#heading--contents)
+For example:
 
-If an unhandled exception occurs in your RCS scripts, depending on the script, it may result in a malformed or blank screen in the UI, an unnecessarily detailed error message sent to the client side, and/or lack of debug information in the RCS logs.
+`SearchScript.groovy`
 
-Therefore, you should wrap your code with a `try/catch` block, send custom error messages to the logs output, and potentially throw a custom exception.
+```groovy
+[ . . . ]
+            handler {
+                // uid resource.uid
+                id resource.id
+                resource.each { entry ->
+                    if (!['uid', 'id'].find { it == entry.key }) {
+                        attribute entry.key, entry.value
+                    }
+                }
+            }
+[ . . . ]
+```
+
+`Response`
+
+```json
+{"code":400,"reason":"Bad Request","message":"Uid value must not be blank!"}
+```
+
+If it is supported, the browser response will be reflected in the UI, for example:
+
+<img alt="Error occurred during SEARCH operation message in IDM admin UI on the Data tab for Groovy connector." data-src="README_files/idm-admin-ui-applications-groovy-data-error.png" data-src-preview="README_files/idm-admin-ui-applications-groovy-data-error.png" src="README_files/idm-admin-ui-applications-groovy-data-error.png" width="1024">
+
+If you want to respond with a custom error message from your script, you can throw an exception to inform the client about a particular situation during your script execution.
+
+For example:
+
+`SearchScript.groovy`
+
+```groovy
+[ . . . ]
+
+switch (objectClass.objectClassValue) {
+    case 'users':
+
+    [ . . . ]
+
+    case 'groups'
+
+    [ . . . ]
+
+    default:
+        throw new UnsupportedOperationException(operation.name() + ' operation of type: ' + objectClass.getObjectClassValue() + ' is not supported.')
+}
+```
+
+`Response`
+
+```json
+{"code":404,"reason":"Not Found","message":"SEARCH operation of type: __ACCOUNT__ is not supported."}
+```
+
+> [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/UnsupportedOperationException.html) is a Java exception, which, among some other most commonly used Java classes, is [automatically provided in Groovy scripts](https://groovy-lang.org/structure.html#_default_imports).
+
+You also have the ability to handle unexpected exceptions in your scripts with `try/catch`, and respond with custom error messages relevant to your scripted functionality with desired level of details included in the response sent to the client.
 
 For example:
 
@@ -234,61 +291,46 @@ try {
     // code
 
 } catch (e) {
+
+    // logging
+
     throw new UnsupportedOperationException('Error occurred during ' + operation + ' operation')
 }
 ```
 
-> [UnsupportedOperationException](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/UnsupportedOperationException.html) is a Java exception, which, among some other most commonly used Java classes, is [automatically provided in Groovy scripts](https://groovy-lang.org/structure.html#_default_imports).
-
-Should an exception occur, a request for search operation would return the specified error content:
+Should an exception occur, a request for search operation would respond with the predefined error content—in this case, a very generic error message:
 
 ```json
 {"code":404,"reason":"Not Found","message":"Error occurred during SEARCH operation"}
 ```
 
-If it is supported, the browser response will be reflected in the UI, for example:
+For debugging purposes, you can output additional information to the RCS logs from any place in your script, including the `catch` block.
 
-<img alt="Error occurred during SEARCH operation message in IDM admin UI on the Data tab for Groovy connector." data-src="README_files/idm-admin-ui-applications-groovy-data-error.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/5/544de5eb7d5d384218393cc94171a71d85721628.png" src="upload://c1N0dnl5nnfUDb1iHVQdk5zgaqA.png" width="1024">
-
-If you throw custom exceptions in your code, you can preserve those custom messages by catching a specific exception type.
-
-For example:
-
-`SearchScript.groovy`
-
-```groovy
-[ . . . ]
-
-try {
-    switch (objectClass.objectClassValue) {
-        case 'users':
-
-        [ . . . ]
-
-        default:
-            throw new UnsupportedOperationException(operation.name() + ' operation of type: ' + objectClass.getObjectClassValue() + ' is not supported.')
-    }
-} catch (UnsupportedOperationException e) {
-    /**
-     * Preserve and re-throw the custom exception on unrecognized object class.
-     */
-    throw e
-} catch (e) {
-    throw new UnsupportedOperationException('Error occurred during ' + operation + ' operation')
-}
-```
-
-<img alt="SEARCH operation of type: __ACCOUNT__ is not supported error in Platform admin UI on the Data tab for Groovy application." data-src-local="README_files/platform-admin-ui-applications-groovy-data-error-object-class.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/5/51589fc3bf282a492b750208654b6d079a42ab31.png" src="upload://bBCybhNrpJe7R2Tn2l7ildHVwK5.png" width="1024">
-
-For debugging purposes, you can output more detailed information about an exception in the RCS logs.
-
-### <a id="heading--developing-debugging-scripts-custom-logs" name="heading--developing-debugging-scripts-custom-logs"></a>Debugging Scripts > Custom Logs
+## <a id="heading--developing-custom-logs" name="heading--developing-custom-logs"></a>Custom Logging
 
 [Back to Contents](#heading--contents)
 
-You can use methods of the [Log](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html) class to output custom logs from your connector scripts by passing in a String with the debugging content.
+### <a id="heading--developing-custom-logs-log" name="heading--developing-custom-logs-log"></a>Custom Logging > Methods of the `Log` class
 
-For example:
+[Back to Contents](#heading--contents)
+
+In RCS scripts, you can use methods of the [Log](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html) class, an instance of which is provided via the `log` binding, to output custom logs from your connector scripts. Normally, you would use one the following methods, listed below in order they become active with respect to the [Log.Level](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.Level.html) selected in the logging configuration:
+
+* `error(java.lang.String format, java.lang.Object... args)` - loggable at any debug level (except when it is set to "OFF").
+
+* `warn(java.lang.String format, java.lang.Object... args)` - loggable at `WARN`, `INFO`, and `OK` levels.
+
+* `info(java.lang.String format, java.lang.Object... args)` - loggable at `INFO` and `OK` levels.
+
+* `ok(java.lang.String format, java.lang.Object... args)`- loggable at the `OK` level.
+
+During development of your scripts, you will have an opportunity to change debug levels for different parts of the framework and your scripts, as will be explained in the [Controlling Debug Output](#heading--developing-custom-logs-logback) chapter. By default, RCS is configured to output logs at the `INFO` level.
+
+The first argument passed into a method of the [Log](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html) class is the actual content of your debug message, which can be optionally parameterized using placeholders referring to additional arguments.
+
+The additional arguments are a comma-separated [Arbitrary Number of Arguments](https://docs.oracle.com/javase/tutorial/java/javaOO/arguments.html#varargs), which can be used to parameterize your message, but otherwise optional.
+
+For example with just a message passed in (and no additional arguments):
 
 `SearchScript.groovy`
 
@@ -310,9 +352,11 @@ try {
 [rcs] Oct 20, 2022 12:41:12 AM INFO ERROR SearchScript: No such property: getResourceData for class: SearchScript
 ```
 
-Using methods of the `Log` class might require some extra processing applied to the content you are trying to output:
+Eventually, all of these methods call the [log(Log.Level level, java.lang.Throwable ex, java.lang.String format, java.lang.Object... args)](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html#log(org.identityconnectors.common.logging.Log.Level,java.lang.Throwable,java.lang.String,java.lang.Object...)) method, which uses the [java.text.MessageFormat](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/text/MessageFormat.html#patterns) class to construct a log message from the passed in parameters.
 
-* To output an object information without referencing its individual properties you may need to convert it to a String first. Otherwise, you could get a wordy error.
+This means:
+
+* In order to output an object without referencing its individual properties, before you pass the object into one of the listed methods of the [Log](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html) class as a single argument, you need to convert the object to a String. Or else, you might get a wordy error.
 
     For example:
 
@@ -320,7 +364,7 @@ Using methods of the `Log` class might require some extra processing applied to 
 
     ```groovy
     try {
-        log.info operation
+        log.ok operation
     } catch (e) {
         log.error e.message
     }
@@ -332,57 +376,55 @@ Using methods of the `Log` class might require some extra processing applied to 
     [rcs] Oct 20, 2022 11:43:45 PM ERROR TestScript: No signature of method: org.identityconnectors.common.logging.Log.info() is applicable for argument types: (org.forgerock.openicf.connectors.groovy.OperationType) values: [TEST]%0APossible solutions: info(java.lang.String, [Ljava.lang.Object;), isInfo(), info(java.lang.Throwable, java.lang.String, [Ljava.lang.Object;), isOk(), find(), any()
     ```
 
-    You can convert an object to string by using its `.toString()` method or by prepending your log with a String:
+    You can convert an object to a String by using its `.toString()` method or by prepending your log message with a String:
 
     For example:
 
    `TestScript.groovy`
 
     ```groovy
-    try {
-        log.info 'Operation: ' + operation
-    } catch (e) {
-        log.error e.message
-    }
+    log.info '' + operation
+    log.info operation.toString()
     ```
 
     `RCS logs`
 
-    ```
-    [rcs] Oct 20, 2022 11:47:24 PM INFO  TestScript: Operation: TEST
-    ```
-
-* If you try to output raw JSON describing an object, its curly braces will be interpreted as formatting syntax (by internally used [MessageFormat](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/text/MessageFormat.html)). This might produce an error if the content of the curly braces is not a number.
-
-    For (an error) example:
-
-    `TestScript.groovy`
-
-    ```groovy
-    try {
-        log.info '{"key": "value"}'
-    } catch (e) {
-        log.error e.message
-    }
+    ```sh
+    [rcs] Oct 20, 2022 11:47:24 PM DEBUG  TestScript: TEST
+    [rcs] Oct 20, 2022 11:47:24 PM DEBUG  TestScript: TEST
     ```
 
-    `RCS logs`
-
-    ```
-    [rcs] Oct 19, 2022 06:55:08 PM ERROR TestScript: cant parse argument number: "key": "value"
-    ```
-
-    To mitigate this issue, you should parse the JSON first _and_ convert the resulting object to a String.
+    Alternatively, you can parameterize you message by adding a [FormatElement](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/text/MessageFormat.html#patterns) in the message pattern and substituting it with one of the additional arguments, which are denoted in the API docs as log([ . . . ]`, java.lang.Object... args`). Doing so will automatically convert the argument into a String, and it can also help to make the log messages less redundant and easier to maintain.
 
     For example:
 
-     `TestScript.groovy`
+   `SearchScript.groovy`
+
+    ```
+    log.ok '{0}', operation
+    log.ok '{0}/{1} {2}', configuration.scriptRoots.collect { it }, configuration.searchScriptFileName, objectClass
+    ```
+
+    `RCS logs`
+
+    ```sh
+    Jul 24, 2023 11:07:47 PM DEBUG SearchScript: SEARCH     Method: invoke0
+    Jul 24, 2023 11:07:47 PM DEBUG SearchScript: [/opt/openicf/scripts/groovy]/SearchScript.groovy ObjectClass: users       Method: invoke0
+    ```
+
+* If you try to output raw JSON, its curly braces will be interpreted as a [FormatElement](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/text/MessageFormat.html#patterns) and cause an error.
+
+    For example, as reasoned on in the [Connection Configuration > "systemActions"](#heading--developing-connector-configuration-system-actions) chapter, a script that you "run on resource" can accept a configuration JSON defined in the system action source or passed in as an argument in a system action request, and you might want to output this JSON in your debug logs:
+
+    `ScriptOnResourceScript.groovy`
 
     ```groovy
-    import groovy.json.JsonSlurper
+    [ . . . ]
 
     try {
-        log.info 'JSON object: ' + (new JsonSlurper().parseText('{"key": "value"}'))
+        log.ok 'actionSource JSON: ' + scriptText
+
+        [ . . . ]
     } catch (e) {
         log.error e.message
     }
@@ -391,14 +433,71 @@ Using methods of the `Log` class might require some extra processing applied to 
     `RCS logs`
 
     ```
-    [rcs] Oct 19, 2022 06:56:41 PM INFO  TestScript: JSON object: [key:value]
+    Jul 25, 2023 7:13:09 PM ERROR ScriptOnResourceScript: cant parse argument number: "key": "value"        Method: invoke
     ```
 
-Methods of the `Log` class add additional information to the output: a timestamp, the log level, and the source reference. You should use `Log` for debugging output that is to stay in the code and be used in the final application.
+    To mitigate this issue, you can firstly parse the JSON and then convert the resulting object to a String.
 
-During the development phase, however, for a quick temporary output, you could use the [println](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/PrintStream.html) method. `System.out.println` will automatically apply `.toString()` method available in all Java objects to the content it outputs. This will allow to print out content of different types of variables without additional processing. It will be up to you to provide any extra info in the output.
+    For example:
 
-> Much of the commonly used Java functionality is [imported in Groovy by default](https://groovy-lang.org/structure.html#_default_imports), including the `java.lang.*` package where `println` comes from. Hence, you don't need to use the full `System.out.println` statement.
+    `ScriptOnResourceScript.groovy`
+
+     ```groovy
+    import groovy.json.JsonSlurper
+
+    try {
+        def jsonSlurper = new groovy.json.JsonSlurper()
+        def actionSourceJson = jsonSlurper.parseText scriptText
+
+        log.ok 'Parsed scriptText: ' + actionSourceJson
+
+        [ . . . ]
+    } catch (e) {
+        log.error e.message
+    }
+    ```
+
+    `RCS logs`
+
+    ```
+    Jul 25, 2023 7:19:50 PM INFO  ScriptOnResourceScript: Parsed scriptText: [key:value]    Method: invoke
+    ```
+
+    Since you are probably going to parse your JSON anyway for future use in the script, outputting the resulting object in the logs might be adequate. However, if you want to see the raw JSON in the debug output, you can do so with a [Message Format Pattern](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/text/MessageFormat.html#patterns).
+
+    For example:
+
+    `ScriptOnResourceScript.groovy`
+
+     ```groovy
+    [ . . . ]
+
+    log.info '{0}', scriptText
+
+    [ . . . ]
+    ```
+
+    `RCS logs`
+
+    ```sh
+    Aug 28, 2023 9:59:55 PM INFO  ScriptOnResourceScript: scriptText: {"key": "value"}
+    ```
+
+### <a id="heading--developing-custom-logs-logback" name="heading--developing-custom-logs-logback"></a>Custom Logging > Controlling Debug Output
+
+[Back to Contents](#heading--contents)
+
+Adjusting debug output in RCS is described in the [Java Remote Connector Server Logging Configuration for Developing Connectors](https://community.forgerock.com/t/java-remote-connector-server-logging-configuration-for-developing-connectors) blog posted on the ForgeRock Community site.
+
+### <a id="heading--developing-custom-logs-println" name="heading--developing-custom-logs-println"></a>Custom Logging > Temporary Logs with `println`
+
+[Back to Contents](#heading--contents)
+
+You should use methods of the [Log](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.html) class in your scripts for outputting debug logs that is to stay in the code and be used in the final application. Because this way you can control the debug output by setting appropriate [Log.Level](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/common/logging/Log.Level.html) in the `logback.xml` configuration file at different deployment stages of your application.
+
+During the development phase, however, for a quick temporary output, you could use the [println](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/io/PrintStream.html) method. `System.out.println` will automatically apply `.toString()` method available in all Java objects to the content it outputs. This will allow to print out content of any variables without additional processing or using special syntax.
+
+> It will be up to you to provide any extra information in the output and you will loose ability to automatically collect logs across your debugging sessions for future analysis—comparing to techniques described in the [Methods of the `Log` class](#heading--developing-custom-logs-log) chapter.
 
 For example:
 
@@ -414,7 +513,9 @@ println operation
 [rcs] TEST
 ```
 
-To outline string values in the printed out content of an object, you can use [inspect()](https://docs.groovy-lang.org/latest/html/groovy-jdk/java/lang/Object.html#inspect()) method in Groovy.
+> Much of the commonly used Java functionality is [imported in Groovy by default](https://groovy-lang.org/structure.html#_default_imports), including the `java.lang.*` package where `println` comes from. Hence, you don't need to use the full `System.out.println` statement.
+
+To outline string values in the printed out content of an object, you can use the [inspect()](https://docs.groovy-lang.org/latest/html/groovy-jdk/java/lang/Object.html#inspect()) method in Groovy.
 
 For example:
 
@@ -432,30 +533,29 @@ println binding.variables.query().inspect()
 [rcs] ['not':false, 'operation':'GREATERTHAN', 'left':'__NAME__', 'right':'m']
 ```
 
-### <a id="heading--developing-debugging-scripts-debugger-k8s" name="heading--developing-debugging-scripts-debugger-k8s"></a>Debugging Scripts > Attaching Debugger to Kubernetes Deployment
+## <a id="heading--developing-debugger" name="heading--developing-debugger"></a>Attaching Debugger
 
 [Back to Contents](#heading--contents)
 
-Attaching a debugger to your RCS process will allow to pause a connector execution at select break points in your code and inspect the current state of your connector scripting context. Doing so can help to locate and eliminate programming errors.
+Attaching a debugger to your RCS process will allow to pause connector execution at select break points in your connector scripts and inspect the state of the scripting context in a more agile and dynamic way than by utilizing debug logging.
 
-An RCS can be deployed within a [Docker](https://www.docker.com/) container; in this case, it will run in a remote Java Virtual Machine (JVM). In order to attach a debugger to this process from your local development setup, you will need to perform the following steps:
+When developing scripts, you are likely to run RCS in a remote Java Virtual Machine (JVM). In order to be able to attach a debugger to this process from your local development setup, you will need to perform the following steps:
 
-1. <a id="heading--developing-debugging-scripts-debugger-k8s-jdwp" name="heading--developing-debugging-scripts-debugger-k8s-jdwp"></a>Enable Debugging
+1. Invoke RCS JVM for debugging with the [Java Debug Wire Protocol (JDWP)](https://docs.oracle.com/en/java/javase/11/docs/specs/jpda/conninv.html#oracle-vm-invocation-options) options.
 
-    [Back to Contents](#heading--contents)
+    In RCS, you can specify the JDWP options in a couple of alternative ways:
 
-    You can enable debugging by invoking your RCS JVM with the [Java Debug Wire Protocol (JDWP)](https://docs.oracle.com/en/java/javase/11/docs/specs/jpda/conninv.html#oracle-vm-invocation-options) options.
+    * Engage the RCS' defaults.
 
-    For a [Kubernetes](https://kubernetes.io/) deployment, you can specify the JDWP options in a few alternative ways:
+        You could rely on the default JDWP options defined in RCS start-up scripts. You can do so by supplying a `jpda` argument in the start-up command for your RCS.
 
-    * Engage the [ForgeRock Open Identity Connector Framework (ICF)](https://backstage.forgerock.com/docs/openicf/latest/index.html) defaults.
-
-        You could rely on the default JDWP options defined for the RCS Docker container. You can do it by supplying the expected `jpda` argument to ICF's [Docker ENTRYPOINT](https://docs.docker.com/engine/reference/builder/#entrypoint) script:
+        For example, in a containerized deployment, the RCS' Docker [ENTRYPOINT](https://docs.docker.com/engine/reference/builder/#entrypoint) script expects an optional `jpda` argument; if one is detected, it constructs JDWP options for RCS' JVM:
 
         `/opt/openicf/bin/docker-entrypoint.sh`:
 
         ```sh
         [ . . . ]
+
         if [ "$1" = "jpda" ] ; then
         if [ -z "$JPDA_TRANSPORT" ]; then
             JPDA_TRANSPORT="dt_socket"
@@ -472,10 +572,65 @@ An RCS can be deployed within a [Docker](https://www.docker.com/) container; in 
         OPENICF_OPTS="$OPENICF_OPTS $JPDA_OPTS"
         shift
         fi
+
+        [ . . . ]
+
+        exec java ${OPENICF_OPTS}  [ . . . ]
+
         [ . . . ]
         ```
 
-        > JDWP is a part of Java Platform Debugger Architecture; hence, the JPDA abbreviation is used in the ICF code.
+        > JDWP is a part of Java Platform Debugger Architecture; hence, JPDA abbreviation is used in the RCS code.
+
+    * Provide custom JDWP options at RCS launch.
+
+        Alternatively, on a "*nix" machine, including containerized RCS deployments, you can define your custom JDWP options in optional `OPENICF_OPTS` environment variable, which the start-up scripts expect.
+
+        For example:
+
+        `rcs.yaml`
+
+        ```sh
+        export OPENICF_OPTS=-agentlib:jdwp=transport=dt_socket,address=*:5005,server=y,suspend=n [ . . . ]
+        ```
+
+        On Windows, the start-up script for Java RCS does not accept any additional JVM options, but you can define them if you [Install a Java RCS on Windows](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/java-server.html#java-connector-server-windows) as a Windows service.
+
+    In all cases, the JDWP `address` option defines the remote JVM's TCP/IP port, to which your local debugger will eventually connect. It will be a _local to the RCS instance_ port, but to distinguish it from the port on the debugger machine, we will call it "remote".
+
+    > Optionally, you can include the host information in the address option, an IP or the `localhost` designation, to limit where the debugger connection could be made from; for example, `address=127.0.0.1:5005`.
+    >
+    > If you omit the host identifier in the Java Development Kit (JDK) 9 and above, the connection will be limited to `localhost`. In the older versions of JDK, if no host is specified, a connection would be allowed from any IP. To achieve the same behavior in JDK 9+, you can use a wildcard as the host value; for example, `address=*:5005`. It is considered the best practice to limit connections to a specific IP, but in some environments you might need to allow connections from any host and secure access to the debugging port by other means.
+    >
+    > Note, that the default JDWP `address` option in RCS does not include host information; and thus, connections to the debugging port might be allowed only from `localhost`:
+    >
+    > `/opt/openicf/bin/docker-entrypoint.sh`:
+    >
+    > ```sh
+    > [ . . . ]
+    > if [ -z "$JPDA_ADDRESS" ]; then
+    >     JPDA_ADDRESS="5005"
+    > fi
+    > [ . . . ]
+    > ```
+
+2. Publishing Debugging Port.
+
+    In your RCS deployment, you will need to have the remote debugging port accessible from your local debugger, so that it can communicate with the RCS process. This may require publishing the port specified in the JDWP options.
+
+Execution of these steps will depend on how your RCS is deployed.
+
+### <a id="heading--developing-debugger-k8s" name="heading--developing-debugger-k8s"></a>Attaching Debugger > Enabling Remote Debugging in Kubernetes
+
+[Back to Contents](#heading--contents)
+
+1. <a id="heading--developing-debugger-k8s-jdwp" name="heading--developing-debugger-k8s-jdwp"></a>Invoking RCS JVM for Debugging
+
+    [Back to Contents](#heading--contents)
+
+    In a [Kubernetes](https://kubernetes.io/) deployment, you can specify the JDWP options as follows:
+
+    * Engage the RCS' defaults.
 
         In a Kubernetes manifest for your RCS, the `jpda` argument can be added to the command that calls the `/opt/openicf/bin/docker-entrypoint.sh` script.
 
@@ -483,87 +638,113 @@ An RCS can be deployed within a [Docker](https://www.docker.com/) container; in 
 
         `rcs.yaml`
 
-        ```sh
+        ```yaml
         [ . . . ]
         command: ['bash', '-c']
         args:
-        - export OPENICF_OPTS="-Dconnectorserver.connectorServerName=$HOSTNAME [ . . . ]"
-          && /opt/openicf/bin/docker-entrypoint.sh jpda;
+        - /opt/openicf/bin/docker-entrypoint.sh jpda;
         [ . . . ]
         ```
 
     * Provide custom JDWP options at RCS launch.
 
-        Alternatively, you can include your (custom) JDWP options in the `OPENICF_OPTS` environment variable defined in your Kubernetes manifest.
+        You can define an `OPENICF_OPTS` environment variable in your Kubernetes manifest and include your custom JDWP options in its value.
 
         For example:
 
         `rcs.yaml`
 
-        ```sh
+        ```yaml
         [ . . . ]
-        command: ['bash', '-c']
-        args:
-        - export OPENICF_OPTS="-Dconnectorserver.connectorServerName=$HOSTNAME [ . . . ]
-          -agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=n"
-          && /opt/openicf/bin/docker-entrypoint.sh;
+        env:
+        - name: OPENICF_OPTS
+          value: "-agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=n"
         [ . . . ]
         ```
 
-    * Provide (custom) JDWP options at runtime.
-
-        You can dynamically apply an environment variable to your RCS containers by using [kubectl set env](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#set) command. With this command, you can update `JAVA_OPTS` for the JVM running in the containers.
+        Alternatively, if you need to define RCS' JVM options dynamically, the command that calls the `/opt/openicf/bin/docker-entrypoint.sh` script in your Kubernetes manifest can be used for exporting (or updating) the `OPENICF_OPTS` environment variable prior to starting the RCS.
 
         For example:
 
-        `Terminal`
+        `rcs.yaml`
 
-        ```sh
-        $ kubectl set env statefulsets/rcs -c rcs JAVA_OPTS="$JAVA_OPTS -agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=n"
+        ```yaml
+        [ . . . ]
+        spec:
+          containers:
+          - image:  rcs
+            name: rcs
+          command: ['bash', '-c']
+          args:
+          - export OPENICF_OPTS="$OPENICF_OPTS -Dconnectorserver.connectorServerName=$HOSTNAME [ . . . ]
+            -agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=n"
+            && /opt/openicf/bin/docker-entrypoint.sh;
+          [ . . . ]
         ```
 
-        > If you use [Skaffold](https://skaffold.dev/docs/), updating `JAVA_OPTS` will restart your StatefulSet/Deployment.
-
-        You can check the updated environment with the `--list` option.
+        Adding the `$OPENICF_OPTS ` default to the export command will allow for extending the variable defined at the container level, either in the Kubernetes manifest file or, as will be shown later, in the Kubernetes cluster.
 
         For example:
 
-        `Terminal`
-
-        ```sh
-        $ kubectl set env statefulsets/rcs -c rcs --list=true
+        ```yaml
+        [ . . . ]
+        spec:
+          containers:
+          - image:  rcs
+            name: rcs
+            command: ['bash', '-c']
+            args:
+            - export OPENICF_OPTS="$OPENICF_OPTS -Dconnectorserver.connectorServerName=$HOSTNAME [ . . . ]"
+              && /opt/openicf/bin/docker-entrypoint.sh;
+            env:
+            - name: OPENICF_OPTS
+              value: "-agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=n"
+        [ . . . ]
         ```
 
-        ```
-        # StatefulSet rcs, container rcs
-        JAVA_OPTS= -agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=n
-        ```
+        > In the case of attaching a debugger to RCS deployed within a Kubernetes cluster, you can leave the host information out of the `address` option, and thus limit the debugger connection to be made only from `localhost` in JDK 9+, which will be aligned with the RCS' JDWP defaults.
 
-        You can remove the variable and its effects with the (negative) `JAVA_OPTS-` option.
+    In addition, in a Kubernetes cluster, you can add, update, or remove an environment variable using [kubectl set env](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#set) command. This way, you can add or update the `OPENICF_OPTS` variable with your custom JDWP options at runtime; doing so will automatically restart the container(s), and the updated `OPENICF_OPTS` content will be applied to the JVM options in the RCS container(s) after restart.
 
-        For example:
+    For example:
 
-        `Terminal`
+    `Terminal`
 
-        ```sh
-        $ kubectl set env statefulsets/rcs -c rcs JAVA_OPTS-
-        ```
+    ```sh
+    $ kubectl set env statefulsets/rcs -c rcs OPENICF_OPTS="-agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=n"
+    ```
 
-    In all cases, the JDWP address option is the remote JVM's TCP/IP port, to which your local debugger will eventually connect. It will be a _local to the RCS instance_ port, but to distinguish it from the port on the debugger machine, we will call it "remote".
+    You can check the updated container environment with the `--list` option.
 
-    > Optionally, you can include the host information in the address option, an IP or the `localhost` designation, to limit where the debugger connection could be made from; for example: `address=127.0.0.1:5005`.
-    >
-    > If you omit the host identifier in the Java Development Kit (JDK) 9 and above, the connection will be limited to `localhost`. In the older versions of JDK, if no host is specified, a connection would be allowed from any IP. To achieve the same behavior in JDK 9+, you can use a wildcard as the host value; for example, `address=*:5005`. It is considered the best practice, however, to limit connections to a specific IP.
-    >
-    > In the case of attaching a debugger to RCS deployed within a Kubernetes cluster, leaving the host information out, and thus limiting the debugger connection to localhost, is the easiest option and the one taken in the default JDWP options defined in ICF.
+    For example:
 
-2. <a id="heading--developing-debugging-scripts-debugger-k8s-port" name="heading--developing-debugging-scripts-debugger-k8s-port"></a>Enable Debugging Port
+    `Terminal`
+
+    ```sh
+    $ kubectl set env statefulsets/rcs -c rcs --list=true
+
+    OPENICF_OPTS=-agentlib:jdwp=transport=dt_socket,address=5005,server=y,suspend=n
+    ```
+
+    You can remove the variable and its effects defined at the container level with the (negative) `OPENICF_OPTS-` option.
+
+    For example:
+
+    `Terminal`
+
+    ```sh
+    $ kubectl set env statefulsets/rcs -c rcs OPENICF_OPTS-
+    ```
+
+    > The export command you defined in your RCS manifest will still work, and the corresponding JVM options will still take effect after container restarts.
+
+
+
+2. <a id="heading--developing-debugger-k8s-port" name="heading--developing-debugger-k8s-port"></a>Publishing Debugging Port
 
     [Back to Contents](#heading--contents)
 
-    You will need to allow your local debugger to communicate with the RCS process via the remote debugging port specified in the JDWP options.
-
-    Your RCS deployment and its debugging port are unlikely to be exposed externally. This means, you will need to let your debugger access the remote process by [forwarding connections made to a local port on your machine to a remote port on the RCS pods in your Kubernetes cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/#forward-a-local-port-to-a-port-on-the-pod).
+    Deployed in Kubernetes, your RCS deployment in the [Client mode](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/configure-server.html) and its debugging port are unlikely to be exposed externally. This means, you will need to let your debugger access the remote process by [forwarding connections made to a local port on your machine to a remote port on the RCS pods in your Kubernetes cluster](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/#forward-a-local-port-to-a-port-on-the-pod).
 
     Here, the local port is the one you will use in your debugger configuration; the remote port is the one that you specified in the JDWP `address` option. In the following example, the "local" port is on the left and the "remote" one is on the right:
 
@@ -576,147 +757,131 @@ An RCS can be deployed within a [Docker](https://www.docker.com/) container; in 
     Forwarding from [::1]:5005 -> 5005
     ```
 
-3. <a id="heading--developing-debugging-scripts-debugger-k8s-debugger" name="heading--developing-debugging-scripts-debugger-k8s-debugger"></a>Configure Debugger and Start Debugging
+This concludes the specifics of enabling remote debugging for RCS running in a Kubernetes cluster. Adjust the examples according to your particular requirements.
 
-    [Back to Contents](#heading--contents)
-
-    IntelliJ is a popular IDE that has rich and refined support for Java and Groovy; and thus, it is probably going to be your best option for developing Groovy scripts for RCS. Below, find an example of how you can configure IntelliJ for remote debugging and attach its debugger to your RCS process:
-
-    1. Create a new IntelliJ project.
-
-        For example, you can use `File > New > Project from Existing Sources...` and point it to the folder that contains your project files—such as README, configuration, etc.—and the actual scripts; then, the folder content could be accessed and maintained under `Project > Project Files`. Do not import any sources at this point; you will add the scripts you need to debug as a module in the next step.
-
-        Open the project.
-
-    1. Add a new module with `File > New Module from Existing Sources...` and point it to your connector's scripts location.
-
-        If/when you have more than one connector in your RCS, mark only the connector-specific scripts as the source files in the Import Module dialog. Creating a separate module from the existing scripts for each connector will let you reference the module in a debugging configuration and thus limit its scope to the scripts for a particular connector.
-
-        > Otherwise, if you included files with the same name for more than one connector in a module, and set a breakpoint in one of the namesake scripts, the debugger could open a file with the same name for a different connector—the first script file with this name that was found in the module sources.
-
-        The module files will serve as the [sources of your (RCS) application](https://www.jetbrains.com/help/idea/attaching-to-local-process.html#prerequisites), which is one of the prerequisites for attaching a debugger in IntelliJ.
-
-        For example, two modules registered for a project might appear under the Project Files in the following manner:
-
-        <img alt="Two modules registered in a project and appearing under Project Files: groovy and postgres. The latter is expanded to show existing source files and their location." data-src-local="README_files/intellij.project-files.modules.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/6/609333ea0e0755b1e8b47f6677f1f553ac99a5a2.png" src="upload://dMlduMMqSx9azlUjyFBbA8PNBwC.png" width="512">
-
-    1. Select `Run` > `Edit Configurations...`
-
-    1. Select `Add New Configuration` (`+`), then select `Remote JVM Debug` from the list of predefined configuration templates.
-
-    1. In the `Configuration` tab, provide values (or verify the defaults) for the following settings:
-
-        1. `Name`: _your-rcs-connector-debugging-configuration-name_
-
-        1. `Debugger mode`: Attach to remote JVM
-
-        1. `Host`: localhost
-
-            The host to which the debugger will connect. Choose localhost because we, actually, attempt to debug locally (that is, the debugger runs locally and connects to a local port, and then it is forwarded to a remote port in the Kubernetes cluster); you could also use `127.0.0.1` or `::1` as the Host value.
-
-        1. `Port`: 5005
-
-            The local port the debugger will connect to, from which connections will be forwarded (with the `kubectl port-forward [ . . . ]` command) to the remote port.
-
-        1. `Command line arguments for remote JVM (for JDK 9 or later)`: JDK 9 or later
-
-            This input is to provide a template for your JDWP options according to your previous choices, and you will see the following:
-
-            `-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005`
-
-            Note, however, that:
-
-            * The `*` prefix  in `JDK 9+` means that the connection will be allowed on the remote host from any IP.
-
-                Leaving the host information out and having just the port specified will limit connections to the localhost only, which is the safest option that will work in this case.
-
-                > Removing the wildcard or replacing it with a specific identifier (for example, an IP or `localhost`) is considered the best practice. In reality, however, it is unlikely that any IP/port will be made public on your RCS; hence, limiting debugging connections to your JVM might be a minor consideration in this case.
-
-            * The remote JVM port is populated with the same number as your local debugger port, for it assumes that the two ports, local and remote, are the same.
-
-                > _If_ the remote debugging port in your RCS were different from the local one, you could still use this input for getting your JDWP options template, and simply update the port with the actual remote port that you will use for debugging.
-                >
-                > Naturally, in such case, you would also need to port-forward your local connections to _that_ port with the `kubectl port-forward [ . . . ]` command.
-                >
-                > For example, if your remote JVM port is `5006`, your _actual_ JDWP options could look like the following:
-                >
-                > `Terminal`
-                >
-                > ```sh
-                > $ kubectl set env statefulsets/rcs -c rcs JAVA_OPTS="$JAVA_OPTS -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006"
-                > ```
-                >
-                > and your port-forwarding command would be:
-                >
-                > `Terminal`
-                >
-                > ```
-                > kubectl port-forward statefulsets/rcs 5005:5006
-                > ```
-
-        1. `Use module classpath`: _your-rcs-connector-module-name_
-
-            Here, you reference the module created from your existing connector's scripts—so that the debugger looks for the breakpoints positions only in those files.
-
-        1. The end result may look similar to the following:
-
-            <img alt="Run/Debug Configurations Window in IntelliJ" data-src-local="README_files/intellij.debug-configuration.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/5/5aabfe98919a965e6e8dba4c032ebc988ccc4f01.png" src="upload://cW7t4pIlzASiyFXmwGhsIuDxZ1D.png" width="1024" />
-
-            Select `Apply` or `OK`.
-
-    1. Start debugging.
-
-        For example, you can select the bug button in the upper right of your IDE UI:
-
-        <img alt="Debug Button Highlighted in IntelliJ Tool Bar" data-src-local="README_files/intellij.debug-run.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/4/44d69402d5fc0779ec76af4499a5e46a76f80aed.png" src="upload://9OYcnfgADs2A8vDnZaWrVYjBmX3.png" width="512" />
-
-    1. Add breakpoints.
-
-        If everything is set up correctly, you should be able to see the breakpoints [verified](https://www.jetbrains.com/help/idea/using-breakpoints.html#breakpoint-icons) and employed when you are using your connector.
-
-        For example:
-
-        <img alt="IntelliJ Window with Active Debug Panel" data-src-local="README_files/intellij.debug-running.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/f/fd9226578c58ab31cdfb42347a7c5e4f0bdd2ae1.jpeg" src="upload://AbbVjEQ0FJOkypGdSrGBaipl4Sl.png" width="1024" />
-
-    1. If you want to use debugger with another scripted connector in the same IntelliJ project:
-
-        * Add a new module via `File > New Module from Existing Sources...`, and point it to the other connector's scripts.
-
-        * Under `Run > Edit Configurations...`, add a new remote JVM debugging configuration, and select the new module in the `Use module classpath:` input.
-
-        * Select the new debug configuration before you start your debug session.
-
-            For example:
-
-            <img alt="Opened Select Debug Configuration Dialog in IntelliJ Tool Bar" data-src-local="README_files/intellij.debug-run-select-configuration.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/a/a2ddba3a63b942e44137ec1edc9a5559db0f82e7.png" src="upload://neMoK6wMlofCuPPMdanwBCvaiDd.png" width="382" />
-
-    For additional details, consult the IntelliJ docs on [setting debugging environment](https://www.jetbrains.com/help/idea/creating-and-editing-run-debug-configurations.html) and [debugging](https://www.jetbrains.com/help/idea/debugging-code.html#general-procedure).
-
-This should help understand the process of attaching a debugger to your RCS instance running in a Kubernetes cluster. Change it according to your specific requirements.
-
-### <a id="heading--developing-debugging-scripts-debugger-docker" name="heading--developing-debugging-scripts-debugger-docker"></a>Debugging Scripts > Attaching Debugger to RCS within Docker Container
+### <a id="heading--developing-debugger-docker" name="heading--developing-debugger-docker"></a>Attaching Debugger > Enabling Remote Debugging in Docker
 
 [Back to Contents](#heading--contents)
 
-If you run RCS in a stand-alone Docker container, as described in [Deploying Java Remote Connector Server in a Docker Container](https://community.forgerock.com/t/deploying-java-remote-connector-server-in-a-docker-container), you can publish the debugger port in the [docker run](https://docs.docker.com/engine/reference/commandline/run) command using the [--publish, -p](https://docs.docker.com/engine/reference/commandline/run/#publish) flag.
+If you run RCS in a standalone Docker container not managed by a system such as Kubernetes, you can enable remote debugging as described in the [Deploying Java Remote Connector Server in a Docker Container](https://community.forgerock.com/t/deploying-java-remote-connector-server-in-a-docker-container) article.
 
-Because localhost reference in a stand-alone container will depend on the host platform, you might not be able to use the default JDWP options defined by ICF. Also, there is no standard way to update the environment variables in a running Docker container. Thus, including the JDWP options in the `OPENICF_OPTS` environment variable at the time an RCS container is created (with the [docker run](https://docs.docker.com/engine/reference/commandline/run) command) is probably the most practical way of enabling debugging, because it will allow to include the host information in the address option. For example, on a macOS, you can reference the host machine address with `address=0.0.0.0:5005` inside a Docker container. Alternatively, you can allow a debugger connection from any host with `address=*:5005` in the JDWP options. To prevent external access, you can bind the debugging port on the host machine to the localhost IP in the [--publish, -p](https://docs.docker.com/engine/reference/commandline/run/#publish) flag.
+## <a id="heading--developing-debugger-configuration" name="heading--developing-debugger-configuration"></a>Attaching Debugger > Configuring and Starting Debugger
 
-For example:
+[Back to Contents](#heading--contents)
 
-`.env file`
+IntelliJ is a popular IDE that has rich and refined support for Java and Groovy; and thus, it is probably going to be your best option for developing Groovy scripts for RCS. Below, find an example of how you can configure IntelliJ for remote debugging and attach its debugger to your RCS process:
 
-```sh
-OPENICF_OPTS=-Dconnectorserver.url=wss://openam-dx-kl04.forgeblocks.com/openicf/0 -Dconnectorserver.tokenEndpoint=https://openam-dx-kl04.forgeblocks.com/am/oauth2/realms/root/realms/alpha/access_token -Dconnectorserver.connectorServerName=rcs-docker-1 -Dconnectorserver.clientId=RCSClient -Dconnectorserver.clientSecret=YA...H? -agentlib:jdwp=transport=dt_socket,address=*:5005,server=y,suspend=n
-```
+1. Create a new IntelliJ project.
 
-```sh
-$ docker run --rm --env-file .env -p 127.0.0.1:5005:5005 rcs
-```
+    For example, you can use `File > New > Project from Existing Sources...` and point it to the folder that contains your project files—such as README, configuration, etc.—and the actual scripts; then, the folder content could be accessed and maintained under `Project > Project Files`. Do not import any sources at this point; you will add the scripts you need to debug as a module in the next step.
 
-From this point, you can proceed to the step [3. Configure Debugger and Start Debugging](#heading--developing-debugging-scripts-debugger-k8s-debugger) described in the Kubernetes Deployment chapter.
+    Open the project.
 
-## <a id="heading--developing-connector-context" name="heading--developing-connector-context"></a>Scripting Context
+1. Add a new module with `File > New Module from Existing Sources...` and point it to your connector's scripts location.
+
+    If/when you have more than one connector in your RCS, mark only the connector-specific scripts as the source files in the Import Module dialog. Creating a separate module for each connector from its existing scripts will let you reference the module in a debugging configuration and thus limit its scope to the scripts for a particular connector.
+
+    > Otherwise, if you included files with the same name for more than one connector in a module, and set a breakpoint in one of the namesake scripts, the debugger could open a file with the same name for a different connector—the first script file with this name that was found in the module sources.
+
+    The module files will serve as the [sources of your (RCS) application](https://www.jetbrains.com/help/idea/attaching-to-local-process.html#prerequisites), which is one of the prerequisites for attaching a debugger in IntelliJ.
+
+    For example, two modules registered for a project might appear under the Project Files in the following manner:
+
+    <img alt="Two modules registered in a project and appearing under Project Files: groovy and postgres. The latter is expanded to show existing source files and their location." data-src-local="README_files/intellij.project-files.modules.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/6/609333ea0e0755b1e8b47f6677f1f553ac99a5a2.png" src="upload://dMlduMMqSx9azlUjyFBbA8PNBwC.png" width="512">
+
+1. Select `Run` > `Edit Configurations...`
+
+1. Select `Add New Configuration` (`+`), then select `Remote JVM Debug` from the list of predefined configuration templates.
+
+1. In the `Configuration` tab, provide values (or verify the defaults) for the following settings:
+
+    1. `Name`: _your-rcs-connector-debugging-configuration-name_
+
+    1. `Debugger mode`: Attach to remote JVM
+
+    1. `Host`: localhost
+
+        The host to which the debugger will connect. Choose localhost because we, actually, attempt to debug locally (that is, the debugger runs locally and connects to a local port, and then it is forwarded to a remote port in the Kubernetes cluster); you could also use `127.0.0.1` or `::1` as the Host value.
+
+    1. `Port`: 5005
+
+        The local port the debugger will connect to, from which connections will be forwarded (with the `kubectl port-forward [ . . . ]` command) to the remote port.
+
+    1. `Command line arguments for remote JVM (for JDK 9 or later)`: JDK 9 or later
+
+        This input is to provide a template for your JDWP options according to your previous choices, and you will see the following:
+
+        `-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005`
+
+        Note, however, that:
+
+        * The `*` prefix  in `JDK 9+` means that the connection will be allowed on the remote host from any IP.
+
+            Leaving the host information out and having just the port specified will limit connections to the localhost only, which is the safest option that will work in this case.
+
+            > Removing the wildcard or replacing it with a specific identifier (for example, an IP or `localhost`) is considered the best practice. In reality, however, it is unlikely that any IP/port will be made public on your RCS; hence, limiting debugging connections to your JVM might be a minor consideration in this case.
+
+        * The remote JVM port is populated with the same number as your local debugger port, for it assumes that the two ports, local and remote, are the same.
+
+            > _If_ the remote debugging port in your RCS were different from the local one, you could still use this input for getting your JDWP options template, and simply update the port with the actual remote port that you will use for debugging.
+            >
+            > Naturally, in such case, you would also need to port-forward your local connections to _that_ port with the `kubectl port-forward [ . . . ]` command.
+            >
+            > For example, if your remote JVM port is `5006`, your _actual_ JDWP options could look like the following:
+            >
+            > `Terminal`
+            >
+            > ```sh
+            > $ kubectl set env statefulsets/rcs -c rcs JAVA_OPTS="$JAVA_OPTS -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006"
+            > ```
+            >
+            > and your port-forwarding command would be:
+            >
+            > `Terminal`
+            >
+            > ```
+            > kubectl port-forward statefulsets/rcs 5005:5006
+            > ```
+
+    1. `Use module classpath`: _your-rcs-connector-module-name_
+
+        Here, you reference the module created from your existing connector's scripts—so that the debugger looks for the breakpoints positions only in those files.
+
+    1. The end result may look similar to the following:
+
+        <img alt="Run/Debug Configurations Window in IntelliJ" data-src-local="README_files/intellij.debug-configuration.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/5/5aabfe98919a965e6e8dba4c032ebc988ccc4f01.png" src="upload://cW7t4pIlzASiyFXmwGhsIuDxZ1D.png" width="1024" />
+
+        Select `Apply` or `OK`.
+
+1. Start debugging.
+
+    For example, you can select the bug button in the upper right of your IDE UI:
+
+    <img alt="Debug Button Highlighted in IntelliJ Tool Bar" data-src-local="README_files/intellij.debug-run.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/4/44d69402d5fc0779ec76af4499a5e46a76f80aed.png" src="upload://9OYcnfgADs2A8vDnZaWrVYjBmX3.png" width="512" />
+
+1. Add breakpoints.
+
+    If everything is set up correctly, you should be able to see the breakpoints [verified](https://www.jetbrains.com/help/idea/using-breakpoints.html#breakpoint-icons) and employed when you are using your connector.
+
+    For example:
+
+    <img alt="IntelliJ Window with Active Debug Panel" data-src-local="README_files/intellij.debug-running.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/f/fd9226578c58ab31cdfb42347a7c5e4f0bdd2ae1.jpeg" src="upload://AbbVjEQ0FJOkypGdSrGBaipl4Sl.png" width="1024" />
+
+1. If you want to use debugger with another scripted connector in the same IntelliJ project:
+
+    * Add a new module via `File > New Module from Existing Sources...`, and point it to the other connector's scripts.
+
+    * Under `Run > Edit Configurations...`, add a new remote JVM debugging configuration, and select the new module in the `Use module classpath:` input.
+
+    * Select the new debug configuration before you start your debug session.
+
+        For example:
+
+        <img alt="Opened Select Debug Configuration Dialog in IntelliJ Tool Bar" data-src-local="README_files/intellij.debug-run-select-configuration.png" data-src-preview="https://backstage-community-prod.storage.googleapis.com/original/2X/a/a2ddba3a63b942e44137ec1edc9a5559db0f82e7.png" src="upload://neMoK6wMlofCuPPMdanwBCvaiDd.png" width="382" />
+
+For additional details, consult the IntelliJ docs on [setting debugging environment](https://www.jetbrains.com/help/idea/creating-and-editing-run-debug-configurations.html) and [debugging](https://www.jetbrains.com/help/idea/debugging-code.html#general-procedure).
+
+##  <a id="heading--developing-connector-context" name="heading--developing-connector-context"></a>Scripting Context
 
 [Back to Contents](#heading--contents)
 
@@ -1848,7 +2013,7 @@ You can [run a script on a remote connector](https://backstage.forgerock.com/doc
 
     * By default, _without_ this optional parameter populated with this particular value, the script you specify in "actionSource" or "actionFile" script will ["run on connector"](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-run-on-connector.html).
 
-        In this mode, the script you specify in "actionSource" or "actionFile" will be sent to the RCS, where your scripted connector package is deployed. ICF will execute the script in the connector type-specific context, with all the variable bindings for "run on connector" operation available to the script.
+        In this mode, the script you specify in "actionSource" or "actionFile" will be sent to RCS, where your scripted connector package is deployed. ICF will execute the script in the connector type-specific context, with all the variable bindings for "run on connector" operation available to the script.
 
         This has been the mode illustrated in all previous examples.
 
@@ -2499,27 +2664,37 @@ In addition, in a managed environment such as the Identity Cloud, you cannot hos
 
 [Back to Contents](#heading--contents)
 
-The "systemAction" key and its content are only accepted and supported by connectors that implement [Script on connector operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-script-on-connector.html) and [Script on resource operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-script-on-resource.html).
+The "systemAction" key and its content are only accepted and supported by connectors that implement [Script on connector operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-script-on-connector.html) and (optionally) [Script on resource operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-script-on-resource.html).
 
-At the time of writing, the following (Java) connectors have implemented both:
+You can check a connector implementation details in the `OpenICF Interfaces Implemented by [ . . . ]` section of its [docs](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/preface.html).
 
-* [Kerberos](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/kerberos.html)
+As of RCS version `1.20.5.17`, the following connectors have implemented both system action operations:
 
-* [Marketo](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/marketo.html)
+* [Groovy Connector Toolkit](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html#implemented-interfaces-org-forgerock-openicf-connectors-groovy-ScriptedConnector-1.5.20.16)
 
-* [MongoDB](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/mongodb.html)
+* [Kerberos](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/kerberos.html#implemented-interfaces-org-forgerock-openicf-connectors-kerberos-KerberosConnector-1.5.20.16)
 
-* [Groovy Connector Toolkit](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/groovy.html)
+* [Marketo](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/marketo.html#implemented-interfaces-org-forgerock-openicf-connectors-marketo-MarketoConnector-1.5.20.16)
 
-* [Scripted REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html)
+* [MongoDB](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/mongodb.html#implemented-interfaces-org-forgerock-openicf-connectors-mongodb-MongoDBConnector-1.5.20.16)
 
-* [Scripted SQL](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-sql.html)
+* [SAP](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/sap.html#implemented-interfaces-org-forgerock-openicf-connectors-sap-SapConnector-1.5.20.16)
 
-* [SSH](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/ssh.html)
+* [Scripted REST](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-rest.html#implemented-interfaces-org-forgerock-openicf-connectors-scriptedrest-ScriptedRESTConnector-1.5.20.16)
 
-In addition, the [Salesforce](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/salesforce.html) connector has only "script on connector operation" implemented.
+* [Scripted SQL](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/scripted-sql.html#implemented-interfaces-org-forgerock-openicf-connectors-scriptedsql-ScriptedSQLConnector-1.5.20.17)
+
+* [SSH](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/ssh.html#implemented-interfaces-org-forgerock-openicf-connectors-ssh-SSHConnector-1.5.20.16)
+
+In addition, the following connectors have implemented only [Script on connector operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-script-on-connector.html):
+
+* [Microsoft Graph](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/msgraph-conf.html#implemented-interfaces-org-forgerock-openicf-connectors-msgraphapi-MSGraphAPIConnector-1.5.20.17)
+
+* [Salesforce](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/salesforce.html#implemented-interfaces-org-forgerock-openicf-connectors-salesforce-SalesforceConnector-1.5.20.17)
 
 > Although unrelated to Java RCS, [Scripted connectors with PowerShell](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/powershell.html) also support script on connector operation.
+
+Continues in [The Basics of Developing Scripted Connectors for Java Remote Connector Server (Part 2)](https://community.forgerock.com/t/the-basics-of-developing-scripted-connectors-for-java-remote-connector-server-part-2/3160).
 
 ## <a id="heading--references" name="heading--references"></a>Commonly Used References
 
@@ -2550,8 +2725,6 @@ In addition, the [Salesforce](https://backstage.forgerock.com/docs/openicf/lates
 * [Groovy JDK API Documentation](https://docs.groovy-lang.org/latest/html/groovy-jdk/overview-summary.html)
 
 * [Java API Docs](https://docs.oracle.com/en/java/javase/11/docs/api/index.html)
-
-Continues in [The Basics of Developing Scripted Connectors for Java Remote Connector Server (Part 2)](https://community.forgerock.com/t/the-basics-of-developing-scripted-connectors-for-java-remote-connector-server-part-2/3160).
 
 ***
 
