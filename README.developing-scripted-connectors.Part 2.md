@@ -1,4 +1,4 @@
-# The Basics of Developing Scripted Connectors for Java Remote Connector Server (Part 2)
+# The Basics of Developing Scripted Connectors for Java Remote Connector Server (Part 2 of 2)
 
 Starts in [The Basics of Developing Scripted Connectors for Java Remote Connector Server (Part 1)](https://community.forgerock.com/t/the-basics-of-developing-scripted-connectors-for-java-remote-connector-server-part-1/3159).
 
@@ -1619,6 +1619,8 @@ In order for it to match the specified ID, your script needs to implement filter
     [not:false, operation:EQUALS, left:__UID__, right:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx]
     ```
 
+    > The `__UID__` parameter is a part of convention that includes a number of [ICF special attributes](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/schema-and-supported-operations.html#openicf-special-attributes) that begin and end with the double underscore. ICF's `__UID__` name references a resource [unique identifier](https://backstage.forgerock.com/docs/openicf/latest/_attachments/apidocs/org/identityconnectors/framework/common/objects/Uid.html).
+
     In the [Query Definition](#heading--developing-scripted-connectors-groovy-search-filtering-query-expression) chapter, it will be explained in details how the map returned by a `query()` call can be used for filtering data in response to either a read or a query request.
 
 * Using the `filter` binding.
@@ -2719,9 +2721,9 @@ try {
 
 [Back to Contents](#heading--contents)
 
-A [test script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-test.html) implements the [test operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-test.html). In scripted Groovy connectors, the test operation always validates the connector configuration first; if a test script reference has been found in the configuration, the script is executed.
+A [test script](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/scripts/script-test.html) implements the [test operation](https://backstage.forgerock.com/docs/openicf/latest/connector-dev-guide/operations/operation-test.html). In scripted Groovy connectors, the test operation always validates the connector configuration first; if a test script reference has been found in the configuration, the script is executed as well.
 
-The test operation is called by IDM at the time a connection is registered, and an admin UI can call it at different times in the connection life cycle.
+The test operation is called by IDM at the time a connection is registered, and an admin UI can call it at different times in the connection life cycle. As described in the [External system status](https://backstage.forgerock.com/docs/openicf/latest/connector-reference/systems-over-rest.html) doc, you can also initiate the test operation via IDM's APIs.
 
 This means that you have an option to use a test script for any connection validation that your particular use case requires. One common application is checking the data source availability.
 
